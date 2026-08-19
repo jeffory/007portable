@@ -93,6 +93,12 @@ static void gfx_sdl_init(const struct GfxWindowInitSettings *set) {
     }
 #endif
 
+#ifdef SDL_HINT_IME_INTERNAL_EDITING
+    /* keep IME composition out of the event stream (see SDL_StopTextInput
+     * after window creation below) */
+    SDL_SetHint(SDL_HINT_IME_INTERNAL_EDITING, "1");
+#endif
+
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         sysFatalError("Could not init SDL:\n%s", SDL_GetError());
     }
@@ -213,6 +219,13 @@ static void gfx_sdl_init(const struct GfxWindowInitSettings *set) {
     }
 
     SDL_ShowWindow(wnd);
+
+    /* SDL2 enables text-input mode on window creation; with an input
+     * method daemon running (fcitx/ibus — common on KDE/Wayland) that
+     * routes raw keydowns into IME composition, which eats taps and only
+     * leaks held keys through after ~a second. This is a game, not a text
+     * field — take raw keys. */
+    SDL_StopTextInput();
 
     qpc_freq = SDL_GetPerformanceFrequency();
 }
