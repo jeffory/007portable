@@ -1,6 +1,9 @@
 #include <ultra64.h>
+#ifndef TARGET_N64
+#include "math_asinacos.h" /* PC: renames acos/asin away from libm's */
+#endif
 
-//data 
+//data
 //D:80032320
 u16 table_1[] = {
     0x8000,0x7EBA,0x7D74,0x7C2D,0x7AE7,0x79A0,0x7859,0x7711,0x75C9,0x7480,

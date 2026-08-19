@@ -1,0 +1,40 @@
+name: PC-Port-Build
+
+on:
+  push:
+    paths:
+      - 'port/**'
+      - 'src/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/port.yml'
+  pull_request:
+
+jobs:
+  build-port:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install 32-bit toolchain
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc gcc-multilib \
+            libsdl2-dev:i386 libgl1-mesa-dev:i386 || \
+          sudo apt-get install -y cmake ninja-build gcc gcc-multilib
+
+      - name: Check generated rom_symbols.ld is current
+        run: |
+          cp port/src/rom_symbols.ld /tmp/rom_symbols.committed
+          python3 port/tools/gen_rom_symbols.py
+          diff -u /tmp/rom_symbols.committed port/src/rom_symbols.ld
+
+      - name: Configure
+        run: cmake -B build-port -G Ninja --toolchain port/cmake/i686-toolchain.cmake
+
+      - name: Build
+        run: ninja -C build-port
+
+      # --selftest needs the ROM, which CI does not have; linking with zero
+      # undefined symbols is the M1 gate here.

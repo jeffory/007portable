@@ -845,11 +845,20 @@ extern void		osSetTLBASID(s32);
 extern u32		 osVirtualToPhysical(void *);
 extern void *		 osPhysicalToVirtual(u32);
 
+#ifdef TARGET_N64
 #define	OS_K0_TO_PHYSICAL(x)	(u32)(((char *)(x)-0x80000000))
 #define	OS_K1_TO_PHYSICAL(x)	(u32)(((char *)(x)-0xa0000000))
 
 #define	OS_PHYSICAL_TO_K0(x)	(void *)(((u32)(x)+0x80000000))
 #define	OS_PHYSICAL_TO_K1(x)	(void *)(((u32)(x)+0xa0000000))
+#else
+/* PC port: no MIPS address segments; all conversions are the identity. */
+#define	OS_K0_TO_PHYSICAL(x)	((u32)(x))
+#define	OS_K1_TO_PHYSICAL(x)	((u32)(x))
+
+#define	OS_PHYSICAL_TO_K0(x)	((void *)(x))
+#define	OS_PHYSICAL_TO_K1(x)	((void *)(x))
+#endif
 
 /* I/O operations */
 
@@ -980,9 +989,13 @@ extern void		osAckRamromWrite(void);
 
 /* byte string operations */
 
+#ifdef TARGET_N64
 extern void     bcopy(const void *, void *, int);
 extern int      bcmp(const void *, const void *, int);
 extern void     bzero(void *, int);
+#else
+#include <strings.h>	/* PC port: host prototypes (size_t) */
+#endif
 
 /* Miscellaneous operations */
 

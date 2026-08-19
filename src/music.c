@@ -666,6 +666,9 @@ void musicSeqPlayerInit(void)
 
         sfxBank = alHeapAlloc(&g_musicHeap, 1, size);
         romCopy(sfxBank, &_sfxctlSegmentRomStart, size);
+#ifndef TARGET_N64
+        portSwapBankFile(sfxBank, size, (u32)&_sfxtblSegmentRomStart); /* PORT_PREPROCESS */
+#endif
         alBnkfNew(sfxBank, (u8 *)&_sfxtblSegmentRomStart);
         g_musicSfxBufferPtr = sfxBank->bankArray[0];
     }
@@ -676,6 +679,9 @@ void musicSeqPlayerInit(void)
 
         instrumentBank = alHeapAlloc(&g_musicHeap, 1, size);
         romCopy(instrumentBank, &_instrumentsctlSegmentRomStart, size);
+#ifndef TARGET_N64
+        portSwapBankFile(instrumentBank, size, (u32)&_instrumentstblSegmentRomStart); /* PORT_PREPROCESS */
+#endif
         alBnkfNew(instrumentBank, (u8 *)&_instrumentstblSegmentRomStart);
         g_musicInstrumentBufferPtr = instrumentBank->bankArray[0];
     }
@@ -687,9 +693,17 @@ void musicSeqPlayerInit(void)
     g_musicDataTable = alHeapAlloc(&g_musicHeap, 1, size);
     romCopy(g_musicDataTable, (void *)tblSegmentRomStartAddress, size);
 
+#ifndef TARGET_N64
+    portSwapRareSeqHeader(g_musicDataTable); /* PORT_PREPROCESS */
+#endif
+
     tblSegmentSize = (sizeof(RareALSeqData) * g_musicDataTable->seqCount) + 4;
     g_musicDataTable = alHeapAlloc(&g_musicHeap, 1, tblSegmentSize);
     romCopy(g_musicDataTable, (void *)tblSegmentRomStartAddress, ALIGN16_a(tblSegmentSize));
+
+#ifndef TARGET_N64
+    portSwapRareSeqTable(g_musicDataTable); /* PORT_PREPROCESS */
+#endif
 
     // end auReadSeqFileHeader
 
@@ -810,8 +824,18 @@ void musicTrack1Play(s32 track)
 
     g_musicXTrack1CurrentTrackNum = track;
 
+#ifdef TARGET_N64
     while (alCSPGetState(g_musicXTrack1SeqPlayer))
         ;
+#else
+    /* On N64 the audio thread advances the player out of AL_STOPPING
+     * between polls; on the port synthesis runs on this thread, so the
+     * bare spin never terminates (black screen after the Rare logo). */
+    while (alCSPGetState(g_musicXTrack1SeqPlayer)) {
+        void portAudioPump(void);
+        portAudioPump();
+    }
+#endif
 
     romAddress = g_musicDataTable->seqArray[g_musicXTrack1CurrentTrackNum].address;
 
@@ -830,6 +854,9 @@ void musicTrack1Play(s32 track)
 
     romCopy(temp_a0, romAddress, trackSizeBytes);
     decompressdata(temp_a0, thing.seqData, &hlist);
+#ifndef TARGET_N64
+    portSwapCMidiHdr(thing.seqData); /* PORT_PREPROCESS */
+#endif
 
     alCSeqNew(&g_musicXTrack1Seq, g_musicXTrack1SeqData);
     alCSPSetSeq(g_musicXTrack1SeqPlayer, &g_musicXTrack1Seq);
@@ -883,6 +910,12 @@ u16 musicTrack1GetVolume(void)
  */
 void musicTrack1ApplySeqpVol(u16 volume)
 {
+#ifndef TARGET_N64
+    if (g_sndBootswitchSound)
+    {
+        return; /* PORT: sound disabled; seq players were never allocated */
+    }
+#endif
     u32 t1 = volume;
 
     g_musicXTrack1Volume = (u16)t1;
@@ -999,8 +1032,16 @@ void musicTrack2Play(s32 track)
 
     g_musicXTrack2CurrentTrackNum = track;
 
+#ifdef TARGET_N64
     while (alCSPGetState(g_musicXTrack2SeqPlayer))
         ;
+#else
+    /* see musicTrack1Play: must pump synthesis or spin forever */
+    while (alCSPGetState(g_musicXTrack2SeqPlayer)) {
+        void portAudioPump(void);
+        portAudioPump();
+    }
+#endif
 
     romAddress = g_musicDataTable->seqArray[g_musicXTrack2CurrentTrackNum].address;
 
@@ -1019,6 +1060,9 @@ void musicTrack2Play(s32 track)
 
     romCopy(temp_a0, romAddress, trackSizeBytes);
     decompressdata(temp_a0, thing.seqData, &hlist);
+#ifndef TARGET_N64
+    portSwapCMidiHdr(thing.seqData); /* PORT_PREPROCESS */
+#endif
 
     alCSeqNew(&g_musicXTrack2Seq, g_musicXTrack2SeqData);
     alCSPSetSeq(g_musicXTrack2SeqPlayer, &g_musicXTrack2Seq);
@@ -1073,6 +1117,12 @@ u16 musicTrack2GetVolume(void)
  */
 void musicTrack2ApplySeqpVol(u16 volume)
 {
+#ifndef TARGET_N64
+    if (g_sndBootswitchSound)
+    {
+        return; /* PORT: sound disabled; seq players were never allocated */
+    }
+#endif
     u32 t1 = volume;
 
     g_musicXTrack2Volume = (u16)t1;
@@ -1188,8 +1238,16 @@ void musicTrack3Play(s32 track)
 
     g_musicXTrack3CurrentTrackNum = track;
 
+#ifdef TARGET_N64
     while (alCSPGetState(g_musicXTrack3SeqPlayer))
         ;
+#else
+    /* see musicTrack1Play: must pump synthesis or spin forever */
+    while (alCSPGetState(g_musicXTrack3SeqPlayer)) {
+        void portAudioPump(void);
+        portAudioPump();
+    }
+#endif
 
     romAddress = g_musicDataTable->seqArray[g_musicXTrack3CurrentTrackNum].address;
 
@@ -1208,6 +1266,9 @@ void musicTrack3Play(s32 track)
 
     romCopy(temp_a0, romAddress, trackSizeBytes);
     decompressdata(temp_a0, thing.seqData, &hlist);
+#ifndef TARGET_N64
+    portSwapCMidiHdr(thing.seqData); /* PORT_PREPROCESS */
+#endif
 
     alCSeqNew(&g_musicXTrack3Seq, g_musicXTrack3SeqData);
     alCSPSetSeq(g_musicXTrack3SeqPlayer, &g_musicXTrack3Seq);
@@ -1262,6 +1323,12 @@ u16 musicTrack3GetVolume(void)
  */
 void musicTrack3ApplySeqpVol(u16 volume)
 {
+#ifndef TARGET_N64
+    if (g_sndBootswitchSound)
+    {
+        return; /* PORT: sound disabled; seq players were never allocated */
+    }
+#endif
     u32 t1 = volume;
 
     g_musicXTrack3Volume = (u16)t1;

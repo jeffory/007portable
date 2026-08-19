@@ -1266,6 +1266,13 @@ void proplvreset2(enum LEVELID stageId)
 
         g_ptrStageSetupFile = _fileNameLoadToBank(strResource, FILELOADMETHOD_DEFAULT, 256, MEMPOOL_STAGE);
 
+#ifndef TARGET_N64
+        /* PORT_PREPROCESS; on 64-bit hosts this returns a native-layout
+         * rebuild of the record arrays (the blob keeps the id lists,
+         * bytecode, strings and intro records) */
+        g_ptrStageSetupFile = portSwapSetupFile(g_ptrStageSetupFile);
+#endif
+
         local_stage = g_ptrStageSetupFile;
         langLoadToAddr(langGetLangBankIndexFromStagenum(stageId));
 

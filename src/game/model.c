@@ -67,7 +67,12 @@ Model *modelmgrInstantiateModel(ModelFileHeader *header)
 
         if (model == NULL) 
         {
+#ifdef TARGET_N64
             model = mempAllocBytesInBank(0x20, MEMPOOL_STAGE);
+#else
+            /* 0x20 is the 32-bit size of the non-anim Model prefix */
+            model = mempAllocBytesInBank(DOUBLE_SIZE_ON_64_BIT(0x20), MEMPOOL_STAGE);
+#endif
         }
 
         if (header->numRecords > 0) 
@@ -137,7 +142,12 @@ Model *modelmgrInstantiateModelWithAnim(ModelFileHeader *modelFileHeader)
 
         if (newModel == NULL) 
         {
+#ifdef TARGET_N64
             newModel = mempAllocBytesInBank(0xc0, MEMPOOL_STAGE);
+#else
+            /* 0xc0 is the 32-bit sizeof(Model); 64-bit is 0xe8, round up */
+            newModel = mempAllocBytesInBank(IS_64_BIT ? 0xf0 : 0xc0, MEMPOOL_STAGE);
+#endif
         }
 
         requiredRwdatalen = modelFileHeader->numRecords;
@@ -445,7 +455,11 @@ union ModelRwData* modelGetNodeRwData(Model *Objinst, ModelNode *root)
         }
     }
 
+#ifdef TARGET_N64
     return &data[index];
+#else
+    return MODEL_RWDATA_AT(data, index);
+#endif
 }
 
 
@@ -910,7 +924,12 @@ u16 modelAnimReadRootMotionValue(ModelAnimation *anim, s32 fieldIndex, s32 extra
     u8 bitsThisRead;
 
     result = 0;
+#ifdef TARGET_N64
     desc = anim->bitDescriptors + fieldIndex;
+#else
+    /* bitDescriptors is a u32 slot on PC (see ModelAnimation) */
+    desc = (struct ModelAnimBitField *)(uintptr_t)anim->bitDescriptors + fieldIndex;
+#endif
     bitsRemaining = desc->bitCount;
 
     if (bitsRemaining > 0)
@@ -918,7 +937,11 @@ u16 modelAnimReadRootMotionValue(ModelAnimation *anim, s32 fieldIndex, s32 extra
         totalBitOffset = extraBitOffset + desc->bitOffset;
         byteIndex = totalBitOffset >> 3;
         totalBitOffset &= 7;
+#ifdef TARGET_N64
         byteptr = anim->bitStream + byteIndex;
+#else
+        byteptr = (u8 *)(uintptr_t)anim->bitStream + byteIndex;
+#endif
         bitsThisRead = 8 - totalBitOffset;
 
         if (bitsRemaining >= bitsThisRead)
@@ -6223,7 +6246,11 @@ void modelAttachPart(Model *pmodel, ModelFileHeader *pmodeldef, ModelNode *pnode
     ModelNode *node;
 
     rwdata->ModelFileHeader = cmodeldef;
+#ifdef TARGET_N64
     rwdata->RwDatas = &pmodel->datas[pmodeldef->numRecords];
+#else
+    rwdata->RwDatas = MODEL_RWDATA_AT(pmodel->datas, pmodeldef->numRecords);
+#endif
 
     pnode->Child = cmodeldef->RootNode;
 

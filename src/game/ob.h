@@ -48,6 +48,6 @@ void fileSetSize(s32 filenum, u8* ptr, u32 size, s32 reallocate);
 s32 get_pc_buffer_remaining_value(u8 *name);
 s32 get_rom_remaining_buffer_for_index(s32 index);
 s32 get_pc_remaining_buffer_for_index(s32 index);
-s32 fileGetIndex(char *resname);
+s32 fileGetIndex(u8 *resname); /* matches the definition; IDO didn't mind the char* mismatch, GCC does */
 
 #endif

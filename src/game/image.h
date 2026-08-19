@@ -70,7 +70,12 @@ struct texcacheitem {
 };
 
 extern struct texcacheitem g_TexCacheItems[];
+#ifdef TARGET_N64
 extern struct texpool *ptr_texture_alloc_start;
+#else
+extern struct texpool g_MainTexPool; /* see image.c: overlay made real */
+#define ptr_texture_alloc_start (g_MainTexPool.start)
+#endif
 extern struct image_entry g_Textures[];
 extern s32 g_TexCacheCount;
 extern u32 bytes;

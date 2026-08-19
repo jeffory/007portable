@@ -823,6 +823,7 @@ ALSoundState *sndPlaySfx(struct ALBankAlt_s *soundBank, s16 soundIndex, ALSoundS
 
     ALMicroTime deltaTotal;
     ALSound *sound;
+
     ALSoundState *newState;
     ALSoundState *nextState;
 

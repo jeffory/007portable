@@ -4,6 +4,45 @@
 #include "model.h"
 
 // bss
+#ifndef TARGET_N64
+/* PC port: on N64 the named placeholders below are consecutive bss slots
+ * that together form the 600-entry ModelHitEntry pool (0x80076A50..
+ * 0x80079930). GCC won't keep separate objects contiguous, and
+ * initModelHitEntryFreeList() writes across the whole pool, so give it one
+ * real allocation and alias the old names at their original offsets. */
+/* 600 entries; 0x2EE0 bytes on 32-bit, but ModelHitEntry has four pointer
+ * members, so size it properly for the host (0x5DC0 on 64-bit — the fixed
+ * 32-bit size let initModelHitEntryFreeList trample the bss that follows) */
+char g_ModelHitEntries[600 * sizeof(ModelHitEntry)];
+#define dword_CODE_bss_80076A5C (*(u32 *)(g_ModelHitEntries + 0x0C))
+#define dword_CODE_bss_80076A60 (*(u32 *)(g_ModelHitEntries + 0x10))
+#define dword_CODE_bss_80076A64 (*(u32 *)(g_ModelHitEntries + 0x14))
+#define dword_CODE_bss_80076A68 (*(u32 *)(g_ModelHitEntries + 0x18))
+#define dword_CODE_bss_80076A6C (*(u32 *)(g_ModelHitEntries + 0x1C))
+#define dword_CODE_bss_80076A70 (*(u32 *)(g_ModelHitEntries + 0x20))
+#define dword_CODE_bss_80076A74 (*(u32 *)(g_ModelHitEntries + 0x24))
+#define dword_CODE_bss_80076A78 ((char *)(g_ModelHitEntries + 0x28))
+#define dword_CODE_bss_80076A84 (*(u32 *)(g_ModelHitEntries + 0x34))
+#define dword_CODE_bss_80076A88 (*(u32 *)(g_ModelHitEntries + 0x38))
+#define dword_CODE_bss_80076A8C (*(char *)(g_ModelHitEntries + 0x3C))
+#define dword_CODE_bss_80076A8D (*(char *)(g_ModelHitEntries + 0x3D))
+#define dword_CODE_bss_80076A8E (*(char *)(g_ModelHitEntries + 0x3E))
+#define dword_CODE_bss_80076A8F (*(char *)(g_ModelHitEntries + 0x3F))
+#define dword_CODE_bss_80076A90 ((char *)(g_ModelHitEntries + 0x40))
+#define dword_CODE_bss_80076AA0 ((char *)(g_ModelHitEntries + 0x50))
+#define dword_CODE_bss_80076AB4 (*(char *)(g_ModelHitEntries + 0x64))
+#define dword_CODE_bss_80076AB5 (*(char *)(g_ModelHitEntries + 0x65))
+#define dword_CODE_bss_80076AB6 (*(char *)(g_ModelHitEntries + 0x66))
+#define dword_CODE_bss_80076AB7 (*(char *)(g_ModelHitEntries + 0x67))
+#define dword_CODE_bss_80076AB8 ((char *)(g_ModelHitEntries + 0x68))
+#define dword_CODE_bss_80076AC8 ((char *)(g_ModelHitEntries + 0x78))
+#define dword_CODE_bss_80076ADC (*(char *)(g_ModelHitEntries + 0x8C))
+#define dword_CODE_bss_80076ADD (*(char *)(g_ModelHitEntries + 0x8D))
+#define dword_CODE_bss_80076ADE (*(char *)(g_ModelHitEntries + 0x8E))
+#define dword_CODE_bss_80076ADF (*(char *)(g_ModelHitEntries + 0x8F))
+#define dword_CODE_bss_80076AE0 ((char *)(g_ModelHitEntries + 0x90))
+#define g_ModelHitEntriesPenultimate ((char *)(g_ModelHitEntries + 0x2EB8))
+#else
 //CODE.bss:80076A50
 char g_ModelHitEntries[0xC];
 //CODE.bss:80076A5C
@@ -50,6 +89,8 @@ char dword_CODE_bss_80076ADF;
 char dword_CODE_bss_80076AE0[0x2E28];
 //CODE.bss:80079908
 char g_ModelHitEntriesPenultimate[0x28];
+
+#endif /* TARGET_N64 */
 
 //CODE.bss:80079930
 struct AnimModelSlot *g_AnimModelSlots;

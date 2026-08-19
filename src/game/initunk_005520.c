@@ -8,8 +8,15 @@
 #define MODEL_SPARE_SLOTS          30
 #define ANIM_MODEL_SPARE_SLOTS     10
 
+#ifdef TARGET_N64
 #define MODEL_SPARE_RWDATALEN      0x14
 #define ANIM_MODEL_SPARE_RWDATALEN 0x8c
+#else
+/* rwdata records with pointer members occupy more 4-byte words on 64-bit,
+ * so headers report larger numRecords; scale the spare slot budgets */
+#define MODEL_SPARE_RWDATALEN      DOUBLE_SIZE_ON_64_BIT(0x14)
+#define ANIM_MODEL_SPARE_RWDATALEN DOUBLE_SIZE_ON_64_BIT(0x8c)
+#endif
 
 
 void modelmgrResetSlotCounts(void)

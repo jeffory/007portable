@@ -1539,12 +1539,24 @@ typedef union {
 /*
  *  Graphics DMA Packet
  */
+#ifdef TARGET_N64
 typedef struct {
 	int		cmd:8;
 	unsigned int	par:8;
 	unsigned int	len:16;
 	uintptr_t   	addr;
 } Gdma;
+#else
+/* little-endian hosts allocate bitfields LSB-first; the port byteswaps
+ * display lists to native words, so reverse the field order to keep cmd
+ * in the top byte of w0 */
+typedef struct {
+	unsigned int	len:16;
+	unsigned int	par:8;
+	int		cmd:8;
+	unsigned int	addr; /* PC: u32 slot (truncated pointer); keeps Gfx 8 bytes on 64-bit */
+} Gdma;
+#endif
 
 /*
  * Graphics Immediate Mode Packet types
@@ -1622,6 +1634,7 @@ typedef struct {
 /*
  * RDP Packet types
  */
+#ifdef TARGET_N64
 typedef struct {
                 int             cmd:8;
                 unsigned int    fmt:3;
@@ -1630,6 +1643,16 @@ typedef struct {
                 unsigned int    wd:12;	/* really only 10 bits, extra	*/
                 uintptr_t       dram;	/* to account for 1024		*/
 } Gsetimg;
+#else
+typedef struct {
+                int             cmd:8;
+                unsigned int    fmt:3;
+                unsigned int    siz:2;
+                unsigned int    pad:7;
+                unsigned int    wd:12;	/* really only 10 bits, extra	*/
+                unsigned int    dram;	/* PC: u32 slot; keeps Gfx 8 bytes on 64-bit */
+} Gsetimg;
+#endif
 
 typedef struct {
 		int		cmd:8;
@@ -1637,6 +1660,7 @@ typedef struct {
 		unsigned int	muxs1:32;
 } Gsetcombine;
 
+#ifdef TARGET_N64
 typedef struct {
 		int		cmd:8;
 		unsigned char	pad;
@@ -1644,6 +1668,18 @@ typedef struct {
 		unsigned char	prim_level;
 		unsigned long	color;
 } Gsetcolor;
+#else
+/* PC: `unsigned long` is 8 bytes on LP64 and silently inflated the whole
+ * Gfx union to 16 bytes (every DL producer then wrote at the wrong
+ * stride). IDO long is 32-bit. */
+typedef struct {
+		int		cmd:8;
+		unsigned char	pad;
+		unsigned char	prim_min_level;
+		unsigned char	prim_level;
+		unsigned int	color;
+} Gsetcolor;
+#endif
 
 typedef struct {
 		int		cmd:8;
@@ -1678,6 +1714,7 @@ typedef struct {
 		unsigned int	shifts:4;
 } Gsettile;
 
+#ifdef TARGET_N64
 typedef struct {
 		int		cmd:8;
 		unsigned int	sl:12;
@@ -1687,6 +1724,18 @@ typedef struct {
 		unsigned int	sh:12;
 		unsigned int	th:12;
 } Gloadtile;
+#else
+/* reversed per word for LSB-first bitfield allocation (see Gdma) */
+typedef struct {
+		unsigned int	tl:12;
+		unsigned int	sl:12;
+		int		cmd:8;
+		unsigned int	th:12;
+		unsigned int	sh:12;
+		unsigned int	tile:3;
+		int		pad:5;
+} Gloadtile;
+#endif
 
 typedef Gloadtile Gloadblock;
 
@@ -1725,10 +1774,22 @@ typedef struct {
 /*
  * Generic Gfx Packet
  */
+#ifdef TARGET_N64
 typedef struct {
 	uintptr_t w0;
 	uintptr_t w1;
 } Gwords;
+#else
+/* PC port: Gfx stays exactly 64 bits even on 64-bit hosts. Loaded asset
+ * display lists are 8-byte records, and every buffer a runtime pointer can
+ * point at (arena, ROM copy, -no-pie statics) lives below 4GB, so pointer
+ * writes truncate losslessly and reads zero-extend. No linked static DL
+ * bakes a pointer into an initializer (checked: only gsDP* immediates). */
+typedef struct {
+	u32 w0;
+	u32 w1;
+} Gwords;
+#endif
 
 /*
  * This union is the fundamental type of the display list.
@@ -1740,7 +1801,11 @@ typedef struct {
  */
 typedef union {
 	Gwords		words;
-#if !defined(F3D_OLD) && IS_BIG_ENDIAN && !IS_64_BIT
+/* PC port note: on little-endian the sub-struct bitfield layouts do NOT
+ * match N64 data; they are enabled so display-list-inspecting code
+ * compiles. Every access is byte-order-wrong until the M2/M3 preprocess
+ * pass byteswaps loaded display lists. */
+#if !defined(F3D_OLD) /* PC64: safe again now that Gwords is 2 x u32 */
 	Gdma		dma;
 	Gtri		tri;
 	Gline3D		line;

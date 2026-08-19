@@ -13,8 +13,14 @@ void rle_expand_8bit(u8 *src, u8 *dst)
     u16 w, h;
     u8 value;
 
+#ifdef TARGET_N64
     w = *(u16 *)&src[0];
     h = *(u16 *)&src[2];
+#else
+    /* PC port: the header halfwords are big-endian on ROM */
+    w = (u16)((src[0] << 8) | src[1]);
+    h = (u16)((src[2] << 8) | src[3]);
+#endif
     remaining = w * h;
     in = &src[10];
 
@@ -47,8 +53,13 @@ void rle_expand_rgb_to_u16_5551(u8 *src, u16 *dst)
     u16 w, h;
     s32 pixel;
 
+#ifdef TARGET_N64
     w = *(u16 *)&src[0];
     h = *(u16 *)&src[2];
+#else
+    w = (u16)((src[0] << 8) | src[1]);
+    h = (u16)((src[2] << 8) | src[3]);
+#endif
     remaining = w * h;
     in = &src[10];
 

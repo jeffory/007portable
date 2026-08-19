@@ -1,4 +1,7 @@
 #include <ultra64.h>
+#ifndef TARGET_N64
+#include "port.h"
+#endif
 #include <math.h>
 #include <os_extension.h>
 #include <PR/libaudio.h>
@@ -252,6 +255,10 @@ void lvInit(void)
     lvl_c_debug_notice_list = 1;
     ptr_font_DL = mempAllocBytesInBank(size, MEMPOOL_PERMANENT);
     romCopy(ptr_font_DL, &_fontdlSegmentRomStart, size);
+#ifndef TARGET_N64
+    /* PORT_PREPROCESS: the fontdl segment is pure Gfx commands (font_dl.c) */
+    portSwapU32InPlace(ptr_font_DL, size);
+#endif
 }
 
 /**
@@ -404,6 +411,9 @@ void lvlStageLoad(s32 stage)
         }
 
         load_bg_file(g_CurrentStageToLoad);
+#ifndef TARGET_N64
+        osSyncPrintf("port: lvlStageLoad: bg+stan loaded\n");
+#endif
         skySetStageNum(g_CurrentStageToLoad);
 
         // HACK: This method call is wrong. The function takes one argument, but the asm calls it without
@@ -481,7 +491,13 @@ void lvlStageLoad(s32 stage)
     init_sound_effects_registers();
     init_guards();
     bodiesReset(stage);
+#ifndef TARGET_N64
+    osSyncPrintf("port: lvlStageLoad: calling proplvreset2\n");
+#endif
     proplvreset2(stage);
+#ifndef TARGET_N64
+    osSyncPrintf("port: lvlStageLoad: proplvreset2 done\n");
+#endif
     alloc_explosion_smoke_casing_scorch_impact_buffers();
     alloc_shattered_window_pieces();
     sub_GAME_7F007290();
@@ -972,6 +988,14 @@ void lvlManageMpGame(void)
     else
     {
         g_ClockTimer = speedgraphframes;
+#ifndef TARGET_N64
+        /* debugger pauses / window hitches advance the wall clock; don't
+         * let one tick integrate seconds of simulation (Bond teleports) */
+        if (g_ClockTimer > 6)
+        {
+            g_ClockTimer = 6;
+        }
+#endif
         D_80048380 += 1;
     }
 

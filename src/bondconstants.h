@@ -123,6 +123,9 @@ typedef enum NAME \
 */} NAME;
 #else
 #    define BITFLAG(...)
+#    ifndef _SYNHILITE
+#        include "port_bitflags.h" /* PC port: pre-expanded BITFLAG enums */
+#    endif
 #endif
 
 #pragma endregion
@@ -3022,6 +3025,12 @@ enum CCRMLUT
         BODY_Male_Pierce_Bond_Tuxedo,
         BODY_Natalya_Jungle_Fatigues,
         BODIES_MAX
+#ifndef TARGET_N64
+        /* IDO enums are always signed int; GCC picks unsigned when no
+         * member is negative, which breaks the cast list's "-1"
+         * terminator ("body < 0" in front.c). Force a signed type. */
+        , BODY_PC_FORCE_SIGNED = -1
+#endif
     } BODIES;
     
     typedef enum GENDER
@@ -3082,8 +3091,17 @@ enum CCRMLUT
         HEAD_COUNT        = HEAD_END - HEAD_START,         // Total number of heads
         HEAD_MALE_COUNT   = HEAD_F_START - HEAD_START,     // Total number of usable randon male heads
         HEAD_FEMALE_COUNT = HEAD_BOND_START - HEAD_F_START, // Total number of usable randon female heads
+#ifdef TARGET_N64
         HEAD_FIXED        = 0xFFFFFFFF,
         HEAD_RANDOM       = 0xFFFFFF9F
+#else
+        /* IDO enums are int, so these are -1/-97 and "head >= 0" filters
+         * them; GCC promotes an enum containing 0xFFFFFFFF to unsigned,
+         * making that check always true (cast screen then indexes
+         * c_item_entries[-1] and crashes). Spell them signed. */
+        HEAD_FIXED        = -1,
+        HEAD_RANDOM       = -0x61
+#endif
     } HEADS;
 
     //Canonical name and style "ai_destroyobj 2 : (def->obj == PROP_ELVIS_SAUCER)\n"
@@ -4729,7 +4747,7 @@ typedef enum PROJECTILES
     )                                                      \
     };
 
-#define MODELSKELETON(NAME, NUMJOINTS, SKELSIZE) ModelSkeleton SKELETON( ## NAME ## ) = {NUMJOINTS, 0, JOINTLIST( ## NAME ## ), SKELSIZE, 0};
+#define MODELSKELETON(NAME, NUMJOINTS, SKELSIZE) ModelSkeleton SKELETON(NAME) = {NUMJOINTS, 0, JOINTLIST(NAME), SKELSIZE, 0};
 
 
 /**
@@ -4809,13 +4827,13 @@ typedef enum PROJECTILES
 #endif
 
 #define CHRFILERECORD(NAME, SCALE, OFFSET, HASHEAD, ISMALE) \
-    {&##NAME##_header, STR(C##NAME##Z), SCALE, OFFSET, HASHEAD, ISMALE},
+    {&NAME ## _header, STR(C##NAME##Z), SCALE, OFFSET, HASHEAD, ISMALE},
 
-#define GUNSTATS(NAME) & ## NAME ## _stats
+#define GUNSTATS(NAME) &NAME ## _stats
 #define GUNFILERECORD(NAME, NOMODEL, STATS, UPPERTEXTID, LOWERTEXTID, POSX, POSY, POSZ, XROT, YROT, WOCTEXT, EQUIPTEXT, EQUIPX, EQUIPY, EQUIPZ) \
-    { & ## NAME ## _header,STR(G## NAME ##Z), NOMODEL, STATS, UPPERTEXTID, LOWERTEXTID, POSX, POSY, POSZ, XROT, YROT, WOCTEXT, EQUIPTEXT, EQUIPX, EQUIPY, EQUIPZ},
+    { &NAME ## _header,STR(G## NAME ##Z), NOMODEL, STATS, UPPERTEXTID, LOWERTEXTID, POSX, POSY, POSZ, XROT, YROT, WOCTEXT, EQUIPTEXT, EQUIPX, EQUIPY, EQUIPZ},
 #define SUIT_LFRECORD(NAME, NOMODEL, STATS, UPPERTEXTID, LOWERTEXTID, POSX, POSY, POSZ, XROT, YROT, WOCTEXT, EQUIPTEXT, EQUIPX, EQUIPY, EQUIPZ) \
-    { & ## NAME ## _header,STR(C## NAME ##Z), NOMODEL, STATS, UPPERTEXTID, LOWERTEXTID, POSX, POSY, POSZ, XROT, YROT, WOCTEXT, EQUIPTEXT, EQUIPX, EQUIPY, EQUIPZ},
+    { &NAME ## _header,STR(C## NAME ##Z), NOMODEL, STATS, UPPERTEXTID, LOWERTEXTID, POSX, POSY, POSZ, XROT, YROT, WOCTEXT, EQUIPTEXT, EQUIPX, EQUIPY, EQUIPZ},
 /**
  * Define a New Item Record
  * @param NAME:  Name of Model

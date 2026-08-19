@@ -134,7 +134,14 @@ void init_path_table_links(void)
             s32 groupNeighbourIndex;
             s32 reverseIndex;
             s32 waypointNum;
+#ifdef TARGET_N64
             waygroup *validationGroupCursors[1];
+#else
+            /* the [-3] accesses below index an IDO stack spill slot; give
+             * them real storage instead of clobbering GCC's locals */
+            waygroup *validationGroupCursors_buf[4];
+            waygroup **validationGroupCursors = &validationGroupCursors_buf[3];
+#endif
 
             validationGroupIndex = 0;
             validationGroup = groups;

@@ -1,4 +1,7 @@
 #include <ultra64.h>
+#ifndef TARGET_N64
+#include <stdio.h>
+#endif
 #include "bondconstants.h"
 #include "image.h"
 #include "image_bank.h"
@@ -12,6 +15,7 @@
 
 // bss
 //8008C720
+#ifdef TARGET_N64
 struct texpool *ptr_texture_alloc_start;
 //8008C724
 s32 ptr_texture_alloc_end;
@@ -19,6 +23,15 @@ s32 ptr_texture_alloc_end;
 s32 ptr_next_available_space;
 //8008C72C
 s32 ptr_last_entry_facemapping;
+#else
+/* PC: these four bss words are really one struct texpool, always accessed
+ * through (struct texpool *)&ptr_texture_alloc_start. Four separate 4-byte
+ * globals can neither hold 8-byte pointers nor stay contiguous under GCC,
+ * so give the overlay a real object (the macro keeps every use site and
+ * the N64 token stream unchanged). */
+struct texpool g_MainTexPool;
+#define ptr_texture_alloc_start (g_MainTexPool.start)
+#endif
 //8008C730
 struct texcacheitem g_TexCacheItems[150];
 //8008D090
@@ -157,7 +170,11 @@ s32 texInflateZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct texpoo
     s32 j;
     s32 unused;
     u8 scratch2[0x800];
+#ifdef TARGET_N64
     u8 scratch[0x2100];
+#else
+    u8 scratch[DOUBLE_SIZE_ON_64_BIT(0x2100)]; /* huft entries double on 64-bit */
+#endif
     u16 palette[0x100];
 
     totalbytesout = 0;
@@ -192,6 +209,14 @@ s32 texInflateZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct texpoo
 
     format = texReadBits(8);
     numcolours = texReadBits(8) + 1;
+
+#ifndef TARGET_N64
+    if (getenv("PORT_TEX_TRACE") != NULL)
+    {
+        fprintf(stderr, "port/tex: num=%d ZLIB fmt=%d colours=%d\n",
+                g_TexNumToLoad, format, numcolours);
+    }
+#endif
 
     for (i = 0; i < numcolours; i++)
     {
@@ -866,6 +891,14 @@ s32 texInflateNonZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct tex
         height = texReadBits(8);
         compmethod = texReadBits(4);
 
+#ifndef TARGET_N64
+        if (getenv("PORT_TEX_TRACE") != NULL)
+        {
+            fprintf(stderr, "port/tex: num=%d lod=%d fmt=%d %dx%d comp=%d\n",
+                    g_TexNumToLoad, i, format, width, height, compmethod);
+        }
+#endif
+
         if (i == 0)
         {
             arg4->rightpos->width = width;
@@ -1048,6 +1081,38 @@ s32 texInflateNonZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct tex
             texSwapAltRowBytes(dst, width, height, format);
         }
     }
+
+#ifndef TARGET_N64
+    /* The decoders above (texChannelsToPixels, texReadUncompressed,
+     * texInflateLookup*, texShrinkNonPaletted) pack 16/32-bit texels with
+     * native-endian stores; the RDP -- and fast3d's importer -- read
+     * texture memory as big-endian bytes, so on a little-endian host every
+     * RGBA16/IA16 texel comes out byte-swapped (character skin turns
+     * cyan). Swap the finished texel words once here: all CPU-side
+     * processing above is endian-consistent internally, and
+     * texSwapAltRowBytes only exchanges whole 32-bit blocks, so it
+     * commutes with this. 8/4-bit formats are plain byte streams, and the
+     * zlib path stores CI indices plus an explicitly big-endian palette,
+     * so neither needs a pass. */
+    if (format == TEXFORMAT_RGBA32 || format == TEXFORMAT_RGB24)
+    {
+        u32 *w = (u32 *)dst;
+
+        for (i = 0; i < totalbytesout / 4; i++)
+        {
+            w[i] = (w[i] >> 24) | ((w[i] >> 8) & 0xFF00) | ((w[i] << 8) & 0xFF0000) | (w[i] << 24);
+        }
+    }
+    else if (format == TEXFORMAT_RGBA16 || format == TEXFORMAT_RGB15 || format == TEXFORMAT_IA16)
+    {
+        u16 *h = (u16 *)dst;
+
+        for (i = 0; i < totalbytesout / 2; i++)
+        {
+            h[i] = (u16)((h[i] >> 8) | (h[i] << 8));
+        }
+    }
+#endif
 
     return totalbytesout;
 }
@@ -2170,6 +2235,17 @@ void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 	u32 *row = (u32 *)dst;
 	s32 tmp;
 
+#ifndef TARGET_N64
+	/* This pre-swizzles odd rows (32-bit word pair exchange) so that a
+	 * dxt=0 LoadBlock leaves TMEM in the layout the RDP sampler
+	 * un-swizzles at fetch time. fast3d reads texture RAM linearly and
+	 * never undoes it, so every mip-mapped texture (the folder photos
+	 * and paperclip, LOD'd character/terrain textures) rendered with its
+	 * odd rows rotated by half a TMEM word - the "checkerboard" on the
+	 * Bond photos. Keep the data linear on PC. */
+	return;
+#endif
+
 	switch (format) {
 	case TEXFORMAT_RGBA32:
 	case TEXFORMAT_RGB24:
@@ -2316,6 +2392,7 @@ s32 texFreeBytesInBuffer(struct texpool *arg0)
 
 void texLoadFromDisplayList(Gfx *gdl, struct texpool *arg1)
 {
+#ifdef TARGET_N64
     u8 *bytes = (u8 *)gdl;
 
     while (bytes[0] != (u8)G_ENDDL)
@@ -2328,6 +2405,18 @@ void texLoadFromDisplayList(Gfx *gdl, struct texpool *arg1)
 
         bytes += 8;
     }
+#else
+    /* byte-indexed opcode/marker reads are big-endian-only */
+    while ((gdl->words.w0 >> 24) != (u8)G_ENDDL)
+    {
+        if ((gdl->words.w0 >> 24) == (u8)G_SETTIMG && (gdl->words.w1 >> 16) == 0xabcd)
+        {
+            texLoad((u32 *)&gdl->words.w1, arg1);
+        }
+
+        gdl++;
+    }
+#endif
 }
 
 
@@ -2388,6 +2477,17 @@ void texLoad(s32 *updateword, struct texpool *pool)
     }
 
     g_TexNumToLoad = *updateword & 0xffff;
+
+#ifndef TARGET_N64
+    /* defensive: a bad texture id would index past the table and DMA from
+     * a garbage ROM offset; use the same fallback as the out-of-memory path */
+    if (g_TexNumToLoad >= (s32)(sizeof(g_Textures) / sizeof(g_Textures[0])) - 1) {
+        fprintf(stderr, "port/tex: texture id %d out of range\n", g_TexNumToLoad);
+        *updateword = osVirtualToPhysical(pool->start); /* pool was defaulted above */
+        return;
+    }
+#endif
+
     tex = texFindInPool(g_TexNumToLoad, pool);
 
     if (tex == NULL)
@@ -2400,8 +2500,14 @@ void texLoad(s32 *updateword, struct texpool *pool)
         osWritebackDCacheAll();
         osInvalDCache(alignedcompbuffer, DCACHE_SIZE);
 
+#ifdef TARGET_N64
         thisoffset = *((s32*)&g_Textures[g_TexNumToLoad]) & 0xFFFFFF;
         nextoffset = (*((s32 *) (&g_Textures[g_TexNumToLoad + 1]))) & ((unsigned long) 0xFFFFFF);
+#else
+        /* the word-pun over the bitfields is big-endian-only */
+        thisoffset = g_Textures[g_TexNumToLoad].dataoffset;
+        nextoffset = g_Textures[g_TexNumToLoad + 1].dataoffset;
+#endif
 
         if (TRUE)
         {
@@ -2422,6 +2528,10 @@ void texLoad(s32 *updateword, struct texpool *pool)
             // only other option is a crash. GBI commands contain texture IDs
             // instead of pointers, and they must be replaced with pointers.
             if ((!iszlib && (texFreeBytesInBuffer(pool) < 0x10CC)) || (iszlib && texFreeBytesInBuffer(pool) < 0xA28)) {
+#ifndef TARGET_N64
+                fprintf(stderr, "port/tex: pool full loading tex %d (free %d, zlib %d)\n",
+                        g_TexNumToLoad, texFreeBytesInBuffer(pool), iszlib);
+#endif
                 *updateword = osVirtualToPhysical(pool->start);
                 return;
             }
@@ -2443,6 +2553,29 @@ void texLoad(s32 *updateword, struct texpool *pool)
             } else {
                 bytesout = texInflateNonZlib(compptr, pool->leftpos, sp14a8, lod, pool);
             }
+
+#ifndef TARGET_N64
+            /* PORT_TEX_DUMP=<num>: write that texture's decoded bytes to
+             * /tmp/ge_tex_<num>.bin for offline inspection */
+            {
+                const char *e = getenv("PORT_TEX_DUMP");
+
+                if (e != NULL && atoi(e) == g_TexNumToLoad) {
+                    char path[64];
+                    FILE *f;
+
+                    sprintf(path, "/tmp/ge_tex_%d.bin", g_TexNumToLoad);
+                    f = fopen(path, "wb");
+                    if (f != NULL) {
+                        fwrite(pool->leftpos, 1, (size_t)bytesout, f);
+                        fclose(f);
+                        fprintf(stderr, "port/tex: dumped %d (%d bytes, zlib=%d, w=%d h=%d)\n",
+                                g_TexNumToLoad, bytesout, iszlib,
+                                tex->width, tex->height);
+                    }
+                }
+            }
+#endif
 
             pool->leftpos += bytesout;
         }

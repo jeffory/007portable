@@ -272,6 +272,7 @@
  * eg
  * #define SETUPSUBROUTINES(ID) (ID == ACTIVATE_OBJECT) |\
  */
+#ifdef TARGET_N64
 #define isSubroutine(ID) ((ID == GAILIST_PLAY_IDLE_ANIMATION) |\
                             (ID == GAILIST_BASH_KEYBOARD) | \
                             (ID == GAILIST_ATTACK_BOND) | \
@@ -282,6 +283,18 @@
                             (\
                                 | SETUPSUBROUTINES(ID)\
                             ))\
+
+#else
+/* GCC rejects the ')' '_' paste inside DEFINED(SETUPSUBROUTINES(ID)).
+   No in-tree file defines SETUPSUBROUTINES (it is a per-setup hook and
+   setups ship as data), so on PC the optional clause reduces to nothing. */
+#define isSubroutine(ID) ((ID == GAILIST_PLAY_IDLE_ANIMATION) |\
+                            (ID == GAILIST_BASH_KEYBOARD) | \
+                            (ID == GAILIST_ATTACK_BOND) | \
+                            (ID == GAILIST_RUN_TO_BOND) | \
+                            (ID == GAILIST_STARTLE_AND_RUN_TO_BOND) | \
+                            (ID == GAILIST_WAIT_ONE_SECOND))
+#endif
 
 
 typedef enum GAILISTID
@@ -773,6 +786,7 @@ char *DOORSTATE_ToString[] = {
                   TEST_COMMAND, TEST_VALUE,
                       CASE_CONTENT,...)
  */
+#ifdef TARGET_N64
 #define SWITCH(VAR, \
                CASE0, CASE_VAL0, CASE_CONTENT0,\
                CASE1, CASE_VAL1, CASE_CONTENT1,\
@@ -811,6 +825,50 @@ IF_VA(NOT(IS_EMPTY(CASE_CONTENT2)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT3)))(Label(lb
 IF_VA(NOT(IS_EMPTY(CASE_CONTENT1)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT2)))(Label(lblNext)) CASE0 (CASE_VAL0,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT1)(lblDone))\
 IF_VA(NOT(IS_EMPTY(CASE_CONTENT0)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT1)))(Label(lblNext))                           EXPAND_ARGS_STACK(CASE_CONTENT0)(lblDone) \
 Label(lblDone))
+#else
+/* IDO fills missing macro arguments with empties; GCC requires the full
+   49/33. PC front doors pad with empty args (same semantics) and the
+   trailing ... swallows the surplus. */
+#define _SWITCH_PC(DUMMY, VAR, \
+               CASE0, CASE_VAL0, CASE_CONTENT0,\
+               CASE1, CASE_VAL1, CASE_CONTENT1,\
+               CASE2, CASE_VAL2, CASE_CONTENT2,\
+               CASE3, CASE_VAL3, CASE_CONTENT3,\
+               CASE4, CASE_VAL4, CASE_CONTENT4,\
+               CASE5, CASE_VAL5, CASE_CONTENT5,\
+               CASE6, CASE_VAL6, CASE_CONTENT6,\
+               CASE7, CASE_VAL7, CASE_CONTENT7,\
+               CASE8, CASE_VAL8, CASE_CONTENT8,\
+               CASE9, CASE_VAL9, CASE_CONTENT9,\
+               CASEA, CASE_VALA, CASE_CONTENTA,\
+               CASEB, CASE_VALB, CASE_CONTENTB,\
+               CASEC, CASE_VALC, CASE_CONTENTC,\
+               CASED, CASE_VALD, CASE_CONTENTD,\
+               CASEE, CASE_VALE, CASE_CONTENTE,\
+               CASEF, CASE_VALF, CASE_CONTENTF, ...)\
+VAR \
+IF_VA(NOT(IS_EMPTY(CASEF)))(0}; Error: Switch Limited to 15 elements + 1 default                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
+                                     /*This is here to stop the spread of errors*/u8 CASEF[] = {)\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENTF)))(                                                    CASEE (CASE_VALE,lblNext) EXPAND_ARGS_STACK(CASE_CONTENTF)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENTE)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENTF)))(Label(lblNext)) CASED (CASE_VALD,lblNext) EXPAND_ARGS_STACK(CASE_CONTENTE)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENTD)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENTE)))(Label(lblNext)) CASEC (CASE_VALC,lblNext) EXPAND_ARGS_STACK(CASE_CONTENTD)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENTC)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENTD)))(Label(lblNext)) CASEB (CASE_VALB,lblNext) EXPAND_ARGS_STACK(CASE_CONTENTC)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENTB)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENTC)))(Label(lblNext)) CASEA (CASE_VALA,lblNext) EXPAND_ARGS_STACK(CASE_CONTENTB)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENTA)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENTB)))(Label(lblNext)) CASE9 (CASE_VAL9,lblNext) EXPAND_ARGS_STACK(CASE_CONTENTA)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT9)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENTA)))(Label(lblNext)) CASE8 (CASE_VAL8,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT9)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT8)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT9)))(Label(lblNext)) CASE7 (CASE_VAL7,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT8)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT7)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT8)))(Label(lblNext)) CASE6 (CASE_VAL6,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT7)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT6)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT7)))(Label(lblNext)) CASE5 (CASE_VAL5,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT6)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT5)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT6)))(Label(lblNext)) CASE4 (CASE_VAL4,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT5)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT4)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT5)))(Label(lblNext)) CASE3 (CASE_VAL3,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT4)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT3)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT4)))(Label(lblNext)) CASE2 (CASE_VAL2,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT3)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT2)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT3)))(Label(lblNext)) CASE1 (CASE_VAL1,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT2)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT1)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT2)))(Label(lblNext)) CASE0 (CASE_VAL0,lblNext) EXPAND_ARGS_STACK(CASE_CONTENT1)(lblDone))\
+IF_VA(NOT(IS_EMPTY(CASE_CONTENT0)))(IF_VA(NOT(IS_EMPTY(CASE_CONTENT1)))(Label(lblNext))                           EXPAND_ARGS_STACK(CASE_CONTENT0)(lblDone) \
+Label(lblDone))
+#define SWITCH(...) _SWITCH_PC(~ , ## __VA_ARGS__,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)
+#endif
 
  /**
    Simple AND Statement.
@@ -824,6 +882,7 @@ Label(lblDone))
             Label(FAIL)
                 do stuff
  */
+#ifdef TARGET_N64
 #define AND(FAIL_LBL,\
                CASE0, CASE_VAL0, \
                CASE1, CASE_VAL1, \
@@ -860,6 +919,45 @@ IF_VA(NOT(IS_EMPTY(CASE_VAL3)))(IF_VA(NOT(IS_EMPTY(CASE_VAL4)))(BREAK(FAIL_LBL) 
 IF_VA(NOT(IS_EMPTY(CASE_VAL2)))(IF_VA(NOT(IS_EMPTY(CASE_VAL3)))(BREAK(FAIL_LBL) Label(lblNext)) CASE1 (CASE_VAL1,lblNext) )\
 IF_VA(NOT(IS_EMPTY(CASE_VAL1)))(IF_VA(NOT(IS_EMPTY(CASE_VAL2)))(BREAK(FAIL_LBL) Label(lblNext)) CASE0 (CASE_VAL0,lblNext) )\
 IF_VA(NOT(IS_EMPTY(CASE_VAL0)))(IF_VA(NOT(IS_EMPTY(CASE_VAL1)))(BREAK(FAIL_LBL) Label(lblNext))                           )
+#else
+#define _AND_PC(DUMMY, FAIL_LBL,\
+               CASE0, CASE_VAL0, \
+               CASE1, CASE_VAL1, \
+               CASE2, CASE_VAL2, \
+               CASE3, CASE_VAL3, \
+               CASE4, CASE_VAL4, \
+               CASE5, CASE_VAL5, \
+               CASE6, CASE_VAL6, \
+               CASE7, CASE_VAL7, \
+               CASE8, CASE_VAL8, \
+               CASE9, CASE_VAL9, \
+               CASEA, CASE_VALA, \
+               CASEB, CASE_VALB, \
+               CASEC, CASE_VALC, \
+               CASED, CASE_VALD, \
+               CASEE, CASE_VALE, \
+               CASEF, CASE_VALF, ...)\
+IF_VA(NOT(IS_EMPTY(CASEF)))(0}; Error: And Limited to 15 elements                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         \
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            \
+                                     /*This is here to stop the spread of errors*/  u8 CASEF[] = {)\
+IF_VA(NOT(IS_EMPTY(CASE_VALF)))(                                                    CASEE (CASE_VALE,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VALE)))(IF_VA(NOT(IS_EMPTY(CASE_VALF)))(BREAK(FAIL_LBL) Label(lblNext)) CASED (CASE_VALD,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VALD)))(IF_VA(NOT(IS_EMPTY(CASE_VALE)))(BREAK(FAIL_LBL) Label(lblNext)) CASEC (CASE_VALC,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VALC)))(IF_VA(NOT(IS_EMPTY(CASE_VALD)))(BREAK(FAIL_LBL) Label(lblNext)) CASEB (CASE_VALB,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VALB)))(IF_VA(NOT(IS_EMPTY(CASE_VALC)))(BREAK(FAIL_LBL) Label(lblNext)) CASEA (CASE_VALA,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VALA)))(IF_VA(NOT(IS_EMPTY(CASE_VALB)))(BREAK(FAIL_LBL) Label(lblNext)) CASE9 (CASE_VAL9,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL9)))(IF_VA(NOT(IS_EMPTY(CASE_VALA)))(BREAK(FAIL_LBL) Label(lblNext)) CASE8 (CASE_VAL8,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL8)))(IF_VA(NOT(IS_EMPTY(CASE_VAL9)))(BREAK(FAIL_LBL) Label(lblNext)) CASE7 (CASE_VAL7,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL7)))(IF_VA(NOT(IS_EMPTY(CASE_VAL8)))(BREAK(FAIL_LBL) Label(lblNext)) CASE6 (CASE_VAL6,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL6)))(IF_VA(NOT(IS_EMPTY(CASE_VAL7)))(BREAK(FAIL_LBL) Label(lblNext)) CASE5 (CASE_VAL5,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL5)))(IF_VA(NOT(IS_EMPTY(CASE_VAL6)))(BREAK(FAIL_LBL) Label(lblNext)) CASE4 (CASE_VAL4,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL4)))(IF_VA(NOT(IS_EMPTY(CASE_VAL5)))(BREAK(FAIL_LBL) Label(lblNext)) CASE3 (CASE_VAL3,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL3)))(IF_VA(NOT(IS_EMPTY(CASE_VAL4)))(BREAK(FAIL_LBL) Label(lblNext)) CASE2 (CASE_VAL2,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL2)))(IF_VA(NOT(IS_EMPTY(CASE_VAL3)))(BREAK(FAIL_LBL) Label(lblNext)) CASE1 (CASE_VAL1,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL1)))(IF_VA(NOT(IS_EMPTY(CASE_VAL2)))(BREAK(FAIL_LBL) Label(lblNext)) CASE0 (CASE_VAL0,lblNext) )\
+IF_VA(NOT(IS_EMPTY(CASE_VAL0)))(IF_VA(NOT(IS_EMPTY(CASE_VAL1)))(BREAK(FAIL_LBL) Label(lblNext))                           )
+#define AND(...) _AND_PC(~ , ## __VA_ARGS__,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)
+#endif
 
 #include "aicommands2.h"
 

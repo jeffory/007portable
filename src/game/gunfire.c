@@ -633,7 +633,11 @@ void gunUpdateAndFire(GUNHAND handnum)
             flashdata = (f32 *) mdlhdr->Switches[3]->Data;
         }
 
+#ifdef TARGET_N64
         hand->mtxlist = rwmtx;
+#else
+        hand->gunModel.render_pos = (RenderPosView *)rwmtx; /* mtxlist aliases the inline Model */
+#endif
 
         if ((bondwalkItemCheckBitflags(item, WEAPONSTATBITFLAG_MIRROR_DUAL) != 0) && (handnum == GUNLEFT))
         {
@@ -1494,7 +1498,17 @@ void gunRenderFirstPersonGunModels(Gfx **gdlptr)
     Model *model;
  
     renderdata = *(ModelRenderData *)&D_80035CC0;
- 
+#ifndef TARGET_N64
+    {
+        /* On N64, D_80035CC0 is contiguous with D_80035CC4[] = {1,3,0,...}
+         * so this cast reads a template {basemtx=NULL, zbufferenabled=TRUE,
+         * flags=3, rest 0}. On PC the symbols aren't adjacent (bss carving),
+         * so the copy above reads garbage flags and the gun never draws. */
+        static const ModelRenderData sGunRenderTemplate = { NULL, TRUE, 3 };
+        renderdata = sGunRenderTemplate;
+    }
+#endif
+
     for (handnum = 0; handnum != 2; handnum++) 
     {
         struct hand *handptr = &g_CurrentPlayer->hands[handnum];
@@ -1602,7 +1616,12 @@ void gunRenderFirstPersonGunModels(Gfx **gdlptr)
 
 Gfx *set_enviro_fog_for_items_in_solo_watch_menu(Gfx *gdl, ITEM_IDS itemid, Mtxf *mtx, s32 arg3, s32 arg4)
 {
+#ifdef TARGET_N64
     ModelRenderData renderdata = *((ModelRenderData *) (&D_80035D00));
+#else
+    /* same bss-carving template as D_80035CC0 above: D_80035D04[] = {1,3,0,...} */
+    ModelRenderData renderdata = { NULL, TRUE, 3 };
+#endif
     ModelHeader model;
     u8 spb8[0x80];
     s32 padb4;

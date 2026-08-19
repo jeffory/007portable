@@ -286,7 +286,12 @@ void bondviewLoadSetupIntroSection(void)
                         ((struct SetupIntroCamera*)intro_record)->unk10.fval = ((struct SetupIntroCamera*)intro_record)->unk10.ival / M_U16_MAX_VALUE_F;
                         ((struct SetupIntroCamera*)intro_record)->unk14.fval = ((struct SetupIntroCamera*)intro_record)->unk14.ival / M_U16_MAX_VALUE_F;
 
+#ifdef TARGET_N64
                         ((struct SetupIntroCamera*)intro_record)->lang1c.lang_ptr = langGet(((struct SetupIntroCamera*)intro_record)->lang1c.lang_index[1]);
+#else
+                        /* [1] is the LOW halfword only on big-endian */
+                        ((struct SetupIntroCamera*)intro_record)->lang1c.lang_ptr = langGet(((struct SetupIntroCamera*)intro_record)->lang1c.lang_index[0]);
+#endif
 
                         if (((struct SetupIntroCamera*)intro_record)->lang20.lang_index != 0)
                         {

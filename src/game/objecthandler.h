@@ -16,6 +16,44 @@ struct bondstruct_unk_op07_related {
     s32 unk0C;
 };
 
+#ifndef TARGET_N64
+/*
+ * PC: both slot structs are Model overlays in disguise (the game casts
+ * &g_ModelSlots[i] to Model*), with the unkXX names encoding 32-bit
+ * offsets. On 64-bit hosts the fields must mirror the native Model
+ * layout: unk02 = rwdatalen, unk08 = obj (nonzero = in use),
+ * unk10 = datas. The anim slot carries a pad so sizeof covers the full
+ * 64-bit Model (0xe8).
+ */
+struct AnimModelSlot {
+    s16 unk00;
+    s16 unk02;      /* Model.rwdatalen */
+    void *unk04;    /* Model.chr */
+    void *unk08;    /* Model.obj */
+    void *unk0c;    /* Model.render_pos */
+    void *unk10;    /* Model.datas */
+    f32 unk14;      /* Model.scale */
+    void *unk18;    /* Model.attachedto */
+    void *unk1c;    /* Model.attachedto_objinst */
+    u8 modelAnimTail[0xB0]; /* rest of the 64-bit Model */
+};
+
+struct ModelSlot {
+    s16 unk00;
+    s16 unk02;      /* Model.rwdatalen */
+    void *unk04;    /* Model.chr */
+    void *unk08;    /* Model.obj */
+    void *unk0c;    /* Model.render_pos */
+    void *unk10;    /* Model.datas */
+    f32 unk14;      /* Model.scale */
+    void *unk18;    /* Model.attachedto */
+    void *unk1c;    /* Model.attachedto_objinst */
+};
+
+#define GE_SLOT_STRUCTS_DEFINED
+#endif
+
+#ifndef GE_SLOT_STRUCTS_DEFINED
 struct AnimModelSlot {
     s16 unk00;
     s16 unk02;
@@ -81,6 +119,7 @@ struct ModelSlot {
     s32 unk18;
     s32 unk1c;
 };
+#endif /* GE_SLOT_STRUCTS_DEFINED */
 
 extern struct AnimModelSlot *g_AnimModelSlots;
 extern struct ModelSlot *g_ModelSlots;

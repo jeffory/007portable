@@ -38,5 +38,10 @@ void initModelHitEntryFreeList(void)
         entries[i].prev = &entries[i - 1];
     }
 
+#ifdef TARGET_N64
     ((ModelHitEntry *)g_ModelHitEntries)[MODELHITENTRIES_LEN - 1].prev = (ModelHitEntry *)g_ModelHitEntriesPenultimate;
+#else
+    /* the penultimate label is entry 598 inside the same pool */
+    entries[MODELHITENTRIES_LEN - 1].prev = &entries[MODELHITENTRIES_LEN - 2];
+#endif
 }

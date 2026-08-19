@@ -1,3 +1,8 @@
+#ifndef TARGET_N64
+/* PC port: forward to the compiler's stdarg.h unconditionally — it
+ * implements the __need___va_list re-include protocol glibc relies on. */
+#include_next <stdarg.h>
+#else
 #ifndef _STDARG_H_
 #define _STDARG_H_
 
@@ -43,3 +48,4 @@ typedef char *va_list;
 
 #endif
 #endif
+#endif /* TARGET_N64 */

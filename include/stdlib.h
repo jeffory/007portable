@@ -1,3 +1,8 @@
+#ifndef TARGET_N64
+/* PC port: forward to the host stdlib.h (its own guard); the IDO decls
+ * below are C89-gated and break C++/glibc-internal consumers. */
+#include_next <stdlib.h>
+#else
 #ifndef _STDLIB_H_
 #define _STDLIB_H_
 
@@ -240,3 +245,4 @@ extern char *fcvt_r(double, int, int *, int *, char *);
 #endif
 #endif /* !__STDLIB_H__ */
 #endif
+#endif /* TARGET_N64 */

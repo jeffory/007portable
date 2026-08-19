@@ -253,9 +253,26 @@
 /**
  * Detects if arg or macro is defined as nothing.
  */
+#ifdef __sgi
 #define IS_EMPTY(x)  _IS_EMPTY(x)
 #define _IS_EMPTY(x) IS_PROBE(CAT(_IS_EMPTY, _##x##_))
 #define _IS_EMPTY__  PROBE(~) /*NULL*/
+#else
+/* The IDO version pastes '_' onto the argument, which is an invalid
+ * preprocessing token for args like 0.1 under GCC/clang. Use the standard
+ * variadic emptiness probe (Jens Gustedt's ISEMPTY) instead. */
+#define _IE_ARG16(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, ...) _15
+#define _IE_HAS_COMMA(...) _IE_ARG16(__VA_ARGS__, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0)
+#define _IE_TRIGGER_PARENTHESIS_(...) ,
+#define _IE_PASTE5(_0, _1, _2, _3, _4) _0##_1##_2##_3##_4
+#define _IE_ISEMPTY(_0, _1, _2, _3) _IE_HAS_COMMA(_IE_PASTE5(_IE_IS_EMPTY_CASE_, _0, _1, _2, _3))
+#define _IE_IS_EMPTY_CASE_0001 ,
+#define IS_EMPTY(...)                                                        \
+    _IE_ISEMPTY(_IE_HAS_COMMA(__VA_ARGS__),                                   \
+                _IE_HAS_COMMA(_IE_TRIGGER_PARENTHESIS_ __VA_ARGS__),          \
+                _IE_HAS_COMMA(__VA_ARGS__(/*empty*/)),                        \
+                _IE_HAS_COMMA(_IE_TRIGGER_PARENTHESIS_ __VA_ARGS__(/*empty*/)))
+#endif
 
 /**
  * Detects if arg or macro is a Bool (1 or 0).
@@ -334,6 +351,7 @@
  * _VA_ARGS_ for c89
  * Allows up to 32 Args on the stack
  */
+#ifdef __sgi
 #define EXPAND_ARGS_STACK(A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA,AB,AC,AD,AE,AF,ERROR) \
 IF_VA(NOT(IS_EMPTY(A)))/*
 */(/*
@@ -436,6 +454,117 @@ IF_VA(NOT(IS_EMPTY(A)))/*
 																																	*/COMMA() undefinedlocal = 1/0 "_VA_ARGS Stack full"/*
 																																*/)/*
 */)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)
+#else
+/* IDO pads missing macro args with empties; GCC needs the full 33.
+   The PC front door pads with empty args and the trailing ... swallows
+   the surplus, giving identical semantics. */
+#define _EXPAND_ARGS_STACK_PC(DUMMY,A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z,AA,AB,AC,AD,AE,AF,ERROR, ...) \
+IF_VA(NOT(IS_EMPTY(A)))/*
+*/(/*
+	*/A /*
+	*/IF_VA(NOT(IS_EMPTY(B)))/*
+	*/(/*
+		*/COMMA() B /*
+		*/IF_VA(NOT(IS_EMPTY(C)))/*
+		*/(/*
+			*/COMMA() C /*
+			*/IF_VA(NOT(IS_EMPTY(D)))/*
+			*/(/*
+				*/COMMA() D /*
+				*/IF_VA(NOT(IS_EMPTY(E)))/*
+				*/(/*
+					*/COMMA() E/*
+					*/IF_VA(NOT(IS_EMPTY(F)))/*
+					*/(/*
+						*/COMMA() F /*
+						*/IF_VA(NOT(IS_EMPTY(G)))/*
+						*/(/*
+							*/COMMA() G /*
+							*/IF_VA(NOT(IS_EMPTY(H)))/*
+							*/(/*
+								*/COMMA() H /*
+								*/IF_VA(NOT(IS_EMPTY(I)))/*
+								*/(/*
+									*/COMMA() I /*
+									*/IF_VA(NOT(IS_EMPTY(J)))/*
+									*/(/*
+										*/COMMA() J /*
+										*/IF_VA(NOT(IS_EMPTY(K)))/*
+										*/(/*
+											*/COMMA() K /*
+											*/IF_VA(NOT(IS_EMPTY(L)))/*
+											*/(/*
+												*/COMMA() L /*
+												*/IF_VA(NOT(IS_EMPTY(M)))/*
+												*/(/*
+													*/COMMA() M /*
+													*/IF_VA(NOT(IS_EMPTY(N)))/*
+													*/(/*
+														*/COMMA() N /*
+														*/IF_VA(NOT(IS_EMPTY(O)))/*
+														*/(/*
+															*/COMMA() O /*
+															*/IF_VA(NOT(IS_EMPTY(P)))/*
+															*/(/*
+																*/COMMA() P /*
+																*/IF_VA(NOT(IS_EMPTY(Q)))/*
+																*/(/*
+																	*/COMMA() Q /*
+																	*/IF_VA(NOT(IS_EMPTY(R)))/*
+																	*/(/*
+																		*/COMMA() R /*
+																		*/IF_VA(NOT(IS_EMPTY(S)))/*
+																		*/(/*
+																			*/COMMA() S /*
+																			*/IF_VA(NOT(IS_EMPTY(T)))/*
+																			*/(/*
+																				*/COMMA() T /*
+																				*/IF_VA(NOT(IS_EMPTY(U)))/*
+																				*/(/*
+																					*/COMMA() U /*
+																					*/IF_VA(NOT(IS_EMPTY(V)))/*
+																					*/(/*
+																						*/COMMA() V /*
+																						*/IF_VA(NOT(IS_EMPTY(W)))/*
+																						*/(/*
+																							*/COMMA() W /*
+																							*/IF_VA(NOT(IS_EMPTY(X)))/*
+																							*/(/*
+																								*/COMMA() X /*
+																								*/IF_VA(NOT(IS_EMPTY(Y)))/*
+																								*/(/*
+																									*/COMMA() Y /*
+																									*/IF_VA(NOT(IS_EMPTY(Z)))/*
+																									*/(/*
+																										*/COMMA() Z /*
+																										*/IF_VA(NOT(IS_EMPTY(AA)))/*
+																										*/(/*
+																											*/COMMA() AA /*
+																											*/IF_VA(NOT(IS_EMPTY(AB)))/*
+																											*/(/*
+																												*/COMMA() AB /*
+																												*/IF_VA(NOT(IS_EMPTY(AC)))/*
+																												*/(/*
+																													*/COMMA() AC /*
+																													*/IF_VA(NOT(IS_EMPTY(AD)))/*
+																													*/(/*
+																														*/COMMA() AD /*
+																														*/IF_VA(NOT(IS_EMPTY(AE)))/*
+																														*/(/*
+																															*/COMMA() AE /*
+																															*/IF_VA(NOT(IS_EMPTY(AF)))/*
+																															*/(/*
+																																*/COMMA() AF /*
+																																*/IF_VA(NOT(IS_EMPTY(ERROR)))/*
+																																*/(/*
+																																	*/COMMA() undefinedlocal = 1/0 "_VA_ARGS Stack full"/*
+																																*/)/*
+*/)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)	)
+/* ", ## __VA_ARGS__": as a ## operand the args are substituted UNexpanded,
+   so macros expanding to comma-bearing tokens cannot mis-split the inner
+   call (they bind first, expand later, exactly like IDO). */
+#define EXPAND_ARGS_STACK(...) _EXPAND_ARGS_STACK_PC(~ , ## __VA_ARGS__,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,)
+#endif
 /**
  * Push/Pop VA Args arrays
  */

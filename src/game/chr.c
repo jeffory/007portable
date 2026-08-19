@@ -1174,10 +1174,19 @@ s32 get_numguards(void)
 }
 
 
+#ifdef TARGET_N64
 void get_ptr_allocated_block_for_vertices(int param_1)
 {
   dynAllocate(param_1 << 4);
 }
+#else
+/* used as the model vtxallocator: on MIPS the dynAllocate result fell
+ * through in $v0 despite the void return type; x86 needs it explicit */
+void *get_ptr_allocated_block_for_vertices(int param_1)
+{
+  return (void *)dynAllocate(param_1 << 4);
+}
+#endif
 
 
 void set_show_patrols_flag(s32 flag)
@@ -2520,6 +2529,20 @@ after_position_update:
         sub_GAME_7F06B248(chr->field_20);
         chr->field_20 = NULL;
     }
+
+#ifndef TARGET_N64
+    if (osGetenv_port_dbg_attackvis())
+    {
+        static u32 lastlog;
+        extern s32 g_GlobalTimer;
+        if (chr->actiontype == 8 && (u32)g_GlobalTimer - lastlog > 60)
+        {
+            lastlog = (u32)g_GlobalTimer;
+            osSyncPrintf("port/dbg: attacker chr pos(%.0f %.0f %.0f) visible=%d\n",
+                         prop->pos.x, prop->pos.y, prop->pos.z, headSwitchVisible);
+        }
+    }
+#endif
 
     if (headSwitchVisible)
     {

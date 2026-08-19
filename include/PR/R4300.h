@@ -60,6 +60,7 @@
 
 #else /* _LANGUAGE_C */
 
+#ifdef TARGET_N64
 #define	K0_TO_K1(x)	((u32)(x)|0xA0000000)	/* kseg0 to kseg1 */
 #define	K1_TO_K0(x)	((u32)(x)&0x9FFFFFFF)	/* kseg1 to kseg0 */
 #define	K0_TO_PHYS(x)	((u32)(x)&0x1FFFFFFF)	/* kseg0 to physical */
@@ -67,6 +68,16 @@
 #define	KDM_TO_PHYS(x)	((u32)(x)&0x1FFFFFFF)	/* direct mapped to physical */
 #define	PHYS_TO_K0(x)	((u32)(x)|0x80000000)	/* physical to kseg0 */
 #define	PHYS_TO_K1(x)	((u32)(x)|0xA0000000)	/* physical to kseg1 */
+#else
+/* PC port: no MIPS address segments; all conversions are the identity. */
+#define	K0_TO_K1(x)	((u32)(x))
+#define	K1_TO_K0(x)	((u32)(x))
+#define	K0_TO_PHYS(x)	((u32)(x))
+#define	K1_TO_PHYS(x)	((u32)(x))
+#define	KDM_TO_PHYS(x)	((u32)(x))
+#define	PHYS_TO_K0(x)	((u32)(x))
+#define	PHYS_TO_K1(x)	((u32)(x))
+#endif
 
 #endif	/* _LANGUAGE_ASSEMBLY */
 

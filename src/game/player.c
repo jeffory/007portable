@@ -123,10 +123,15 @@ void initBONDdataforPlayer(s32 player_num)
     assert(players[num]==NULL); //according to assert, this file name is "player.c"
 #endif
     default_hand = D_8003FDA0;
+#ifdef TARGET_N64
 #if defined(VERSION_US) || defined(VERSION_JP)
     g_playerPointers[player_num] = mempAllocBytesInBank(0x2A80U, MEMPOOL_STAGE);
 #elif defined(VERSION_EU)
     g_playerPointers[player_num] = mempAllocBytesInBank(0x2A70U, MEMPOOL_STAGE);
+#endif
+#else
+    /* 0x2A80 is the 32-bit sizeof; the struct is larger on 64-bit hosts */
+    g_playerPointers[player_num] = mempAllocBytesInBank(sizeof(struct player) + 0x10, MEMPOOL_STAGE);
 #endif
 
 #ifdef DEBUG

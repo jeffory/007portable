@@ -1,3 +1,10 @@
+#ifndef TARGET_N64
+/* PC port: forward to the host stddef.h unconditionally — no guard here,
+ * because GCC's stddef.h implements the __need_size_t re-include protocol
+ * and also treats a pre-defined _STDDEF_H_ as "already done". */
+#include_next <stddef.h>
+#else
+
 #ifndef _STDDEF_H_
 #define _STDDEF_H_
 
@@ -6,6 +13,7 @@
 //typedef unsigned long size_t;
 
 #endif
+#endif /* TARGET_N64 */
 
 
 #if 0

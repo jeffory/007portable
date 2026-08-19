@@ -226,12 +226,22 @@ struct levelentry levelinfotable[] = {
 u32 D_8004481C[] = {0x1000100, 0};
 
 //D:80044824
+#ifdef TARGET_N64
 s_specialportal specialportalarray[] = {
     {0x03,
         {0x2C,0x2E,0x32, 0x37,0x3E,0x3F,0x4E, 0x56,0x59,0x5D,0x72, 0x76,0x79,0x7A,0xFF}},
     {0x11,
         {0x00,0x3A,0xFF}}
 };
+#else
+/* PC port: GCC rejects initialized flexible array members in an array of
+ * structs. The walker (sub_GAME_7F0B37EC) reads this as packed bytes
+ * anyway, so emit the identical byte layout directly. */
+u8 specialportalarray[] = {
+    0x03, 0x2C,0x2E,0x32, 0x37,0x3E,0x3F,0x4E, 0x56,0x59,0x5D,0x72, 0x76,0x79,0x7A,0xFF,
+    0x11, 0x00,0x3A,0xFF
+};
+#endif
 
 /**
  * Bond's current room.
@@ -335,7 +345,13 @@ void sub_GAME_7F0B37EC(void) {
     u32 masked;
 
     ptr = (u8 *)specialportalarray;
+#ifdef TARGET_N64
     end = (u8 *)&g_BgCurrentRoom;
+#else
+    /* the N64 bound relies on link order placing g_BgCurrentRoom directly
+     * after the array; use the actual array size instead */
+    end = (u8 *)specialportalarray + sizeof(specialportalarray);
+#endif
 
     do {
         if (levelentry_index == *ptr++) {
@@ -818,6 +834,10 @@ void load_bg_file(LEVEL_INDEX levelid)
     ptr_bg_data = (s32)header;
     obLoadBGFileBytesAtOffset(levelinfotable[levelentry_index].bg_seg_filename, (u8 *) ptr_bg_data, 0, 0x40);
 
+#ifndef TARGET_N64
+    portSwapBgHeaderProbe((void *)ptr_bg_data); /* PORT_PREPROCESS */
+#endif
+
     if (((levelid && ptr_bg_data) && levelentry_index));
 
     ptr_bgdata_offsets = ptr_bg_data;
@@ -827,9 +847,18 @@ void load_bg_file(LEVEL_INDEX levelid)
  
     ptr_bg_data = (s32) mempAllocBytesInBank(size, 4);
     obLoadBGFileBytesAtOffset(levelinfotable[levelentry_index].bg_seg_filename, (u8 *) ptr_bg_data, 0, size);
- 
+
+#ifndef TARGET_N64
+    portSwapBgFile((void *)ptr_bg_data, size); /* PORT_PREPROCESS */
+#endif
+
     gptr_stan = (s32) _fileNameLoadToBank(levelinfotable[levelentry_index].bg_stan_filename, 2, 0, 4);
- 
+
+#ifndef TARGET_N64
+    /* PORT_PREPROCESS; on 64-bit hosts this returns a native-layout copy */
+    gptr_stan = (s32)(uintptr_t)portSwapStanFile((void *)(uintptr_t)gptr_stan);
+#endif
+
     stanDetermineEOF((struct StanPrefixRecord *) gptr_stan, 0, (u8 *) gptr_stan);
     stanLoadFile((struct StanPrefixRecord *) gptr_stan);
  
@@ -2233,7 +2262,11 @@ void roomsHandleStateDebugging(void)
 
 u32 bgDecompress(u8* source, u8 *target)
 {
+#ifdef TARGET_N64
     u8 buffer[0x2100];
+#else
+    u8 buffer[DOUBLE_SIZE_ON_64_BIT(0x2100)]; /* huft entries double on 64-bit */
+#endif
     return decompressdata(source, target, buffer);
 }
 
@@ -2265,6 +2298,10 @@ s32 bgLoadRoomVtxData(s32 roomnum, u8 *dst, s32 len)
     offset = (((u8 *)ptr_bgdata_room_fileposition_list[roomnum].pPointTableBin + ptr_bg_data) - ptr_bg_data) + 0xf1000000;
     obLoadBGFileBytesAtOffset(levelinfotable[levelentry_index].bg_seg_filename, dst + (len - alignedsize), offset, alignedsize);
     result = bgDecompress(dst + (len - alignedsize), dst);
+
+#ifndef TARGET_N64
+    portSwapBgRoomVertices(dst, result); /* PORT_PREPROCESS */
+#endif
 
     room->vertices = (Vtx *)dst;
     room->usize_point_index_binary = result;
@@ -2312,6 +2349,10 @@ s32 bgLoadRoomPrimaryGdl(s32 roomnum, u8 *dst, s32 allocsize)
 
     // Decompress from the end-of-buffer location at dst.
     expanded_size = bgDecompress(scratch, dst);
+
+#ifndef TARGET_N64
+    portSwapBgRoomGdl(dst, expanded_size); /* PORT_PREPROCESS */
+#endif
 
     /**
      * Copy the decompressed GDL back to the end of the buffer as scratch.
@@ -2377,6 +2418,10 @@ s32 bgLoadRoomSecondaryGdl(s32 roomnum, u8 *dst, s32 allocsize)
 
     // Decompress from the end-of-buffer location at dst.
     expanded_size = bgDecompress(scratch, dst);
+
+#ifndef TARGET_N64
+    portSwapBgRoomGdl(dst, expanded_size); /* PORT_PREPROCESS */
+#endif
 
     /**
      * Copy the decompressed GDL back to the end of the buffer as scratch.
@@ -3464,28 +3509,54 @@ bool bgTestBulletHitBackground(coord3d *from, coord3d *to, s32 roomnum, struct H
     {
         point = (RoomVtxBatchBounds *)hit->tricmd;
 
-        if (((u8 *)((Gfx*)point))[0] != G_SETTILE) 
+#ifdef TARGET_N64
+        if (((u8 *)((Gfx*)point))[0] != G_SETTILE)
         {
-            while ((Gfx *)g_BgRoomInfo[roomnum].ptr_expanded_mapping_info < ((Gfx*)point)) 
+            while ((Gfx *)g_BgRoomInfo[roomnum].ptr_expanded_mapping_info < ((Gfx*)point))
             {
                 point = (RoomVtxBatchBounds *)((Gfx *)point - 1);
-                if (((u8 *)((Gfx*)point))[0] == G_SETTILE) 
+                if (((u8 *)((Gfx*)point))[0] == G_SETTILE)
                 {
                     break;
                 }
             }
         }
 
-        if (((Gfx*)point) == g_BgRoomInfo[roomnum].ptr_expanded_mapping_info) 
+        if (((Gfx*)point) == g_BgRoomInfo[roomnum].ptr_expanded_mapping_info)
         {
             hit->tileformat = -1;
             hit->tilesize = -1;
-        } 
-        else 
+        }
+        else
         {
             hit->tileformat = ((u32)((u8 *)((Gfx*)point))[1]) >> 5;
             hit->tilesize = (((Gfx*)point)->words.w0 << 11) >> 30;
         }
+#else
+        /* byte-indexed opcode/format reads are big-endian-only */
+        if ((((Gfx *)point)->words.w0 >> 24) != G_SETTILE)
+        {
+            while ((Gfx *)g_BgRoomInfo[roomnum].ptr_expanded_mapping_info < ((Gfx*)point))
+            {
+                point = (RoomVtxBatchBounds *)((Gfx *)point - 1);
+                if ((((Gfx *)point)->words.w0 >> 24) == G_SETTILE)
+                {
+                    break;
+                }
+            }
+        }
+
+        if (((Gfx*)point) == g_BgRoomInfo[roomnum].ptr_expanded_mapping_info)
+        {
+            hit->tileformat = -1;
+            hit->tilesize = -1;
+        }
+        else
+        {
+            hit->tileformat = ((((Gfx *)point)->words.w0 >> 16) & 0xFF) >> 5;
+            hit->tilesize = (((Gfx*)point)->words.w0 << 11) >> 30;
+        }
+#endif
     }
 
     return found;
@@ -5107,7 +5178,11 @@ s32 bgGetPortalBetweenRooms(s32 room1, s32 room2, coord3d *arg2, coord3d *arg3)
     s32 portalIndex = -1;
 
     #ifndef DEBUG
-        #define osSyncPrintf(x)
+        #ifdef TARGET_N64
+            #define osSyncPrintf(x)
+        #else
+            #define osSyncPrintf(...)
+        #endif
     #endif
 
     for (i = 0; g_BgPortals[i].offset_portal != NULL; i++)

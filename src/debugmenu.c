@@ -41,6 +41,7 @@ s32 g_DebugMenuTextStartX = 5;
 s32 g_DebugMenuTextStartY = 1;
 s32 g_DebugMenuTextCurrentX = 24;
 s32 g_DebugMenuTextCurrentY = 16;
+#if defined(TARGET_N64) || !IS_64_BIT
 Gfx g_DebugMenuTextureDisplayList[] = {
     gsDPPipeSync(),
     gsDPSetCycleType(G_CYC_1CYCLE),
@@ -54,6 +55,35 @@ Gfx g_DebugMenuTextureDisplayList[] = {
     gsDPLoadSync(),
     gsSPEndDisplayList()
 };
+#else
+/* 64-bit PC: a pointer truncated to the u32 Gfx word is not a valid static
+ * initializer, so the SETTIMG address slot starts 0 and is patched in at
+ * startup (the image lives below 4GB: -no-pie statics). */
+Gfx g_DebugMenuTextureDisplayList[] = {
+    gsDPPipeSync(),
+    gsDPSetCycleType(G_CYC_1CYCLE),
+    gsDPSetColorDither(G_CD_DISABLE),
+    gsDPSetRenderMode(IM_RD | CVG_DST_FULL | ZMODE_OPA | FORCE_BL | GBL_c1(G_BL_CLR_MEM, G_BL_A_IN, G_BL_CLR_IN, G_BL_1), IM_RD | CVG_DST_FULL | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_MEM, G_BL_A_IN, G_BL_CLR_IN, G_BL_1)),
+    gsDPSetCombineLERP(PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT, PRIMITIVE, ENVIRONMENT, TEXEL0, ENVIRONMENT),
+    gsDPSetTexturePersp(G_TP_NONE),
+    //gsDPSetTextureLUT(G_TT_NONE),
+    gsDPSetAlphaCompare(G_AC_NONE),
+    gsDPLoadTextureBlock(0, G_IM_FMT_IA, G_IM_SIZ_8b, 128, 21, 0, (G_TX_NOMIRROR | G_TX_WRAP), (G_TX_NOMIRROR | G_TX_WRAP), G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD),
+    gsDPLoadSync(),
+    gsSPEndDisplayList()
+};
+
+__attribute__((constructor)) static void debugmenuPatchTextureDL(void)
+{
+    s32 i;
+    for (i = 0; i < (s32)(sizeof(g_DebugMenuTextureDisplayList) / sizeof(Gfx)); i++) {
+        if ((g_DebugMenuTextureDisplayList[i].words.w0 >> 24) == (u8)G_SETTIMG &&
+            g_DebugMenuTextureDisplayList[i].words.w1 == 0) {
+            g_DebugMenuTextureDisplayList[i].words.w1 = (u32)(uintptr_t)&g_DebugMenuTexture;
+        }
+    }
+}
+#endif
 character g_DebugMenuTextBuffer[80][35] = {0}; // unused in the final game (waste of space)
 Gfx g_DHudFgGbiPtrs[32] = {0};
 Gfx g_DHudBgGbiPtrs[32] = {0};

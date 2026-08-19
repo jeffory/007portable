@@ -447,6 +447,20 @@ u32 controllerCheckDualControllerTypesAllowed(void)
 
 
 int cur_player_get_control_type(void){
+#ifndef TARGET_N64
+    /* PC port: while mouselook has the mouse grabbed (PORT_MOUSELOOK=1),
+     * play the 1.x styles as 1.2 Solitaire — stick (= mouse) turns/looks,
+     * C buttons (= WASD / gamepad right stick) move. F1 releases the grab
+     * and restores the player's real setting. */
+    {
+        extern int portMouselookGrabbed(void);
+
+        if (portMouselookGrabbed()
+            && g_CurrentPlayer->cur_player_control_type_0 <= CONTROLLER_CONFIG_GOODNIGHT) {
+            return CONTROLLER_CONFIG_SOLITARE;
+        }
+    }
+#endif
   return g_CurrentPlayer->cur_player_control_type_0;
 }
 

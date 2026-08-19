@@ -1,6 +1,9 @@
 #include <ultra64.h>
 #include <ramrom.h>
 #include <memp.h>
+#ifndef TARGET_N64
+#include "port.h"
+#endif
 #include "image_bank.h"
 
 // bss
@@ -174,6 +177,10 @@ void texReset(void)
     pGlobalimagetable = ((u32)pGlobalimagetable + 0xFFFU) & 0xFFFFF000;
 
     romCopy(pGlobalimagetable, &_GlobalimagetableSegmentRomStart, size);
+
+#ifndef TARGET_N64
+    portSwapGlobalImagetable(pGlobalimagetable, size); // PORT_PREPROCESS
+#endif
 
     globalbank_rdram_offset = (u32)pGlobalimagetable + 0xFE000000;
     genericimage = (void *) (globalbank_rdram_offset + (u32)&s_genericimage);

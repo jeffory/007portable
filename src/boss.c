@@ -40,6 +40,10 @@
 #include "game/frametiming.h"
 #include "PR/R4300.h"
 
+#ifndef TARGET_N64
+#include "port.h"
+#endif
+
 /**
  * @file boss.c
  * @brief Main game loop and initialization functions.
@@ -214,8 +218,14 @@ void bossInitMainthreadData(void)
         g_CurentMMallocValue = (s32) (strtol(tokenFind(1, "-m"), 0, 0) << 0xa);
     }
 
+#ifdef TARGET_N64
     start = (PHYS_TO_K0(osVirtualToPhysical(&_bssSegmentEnd)));
     mempCheckMemflagTokens(start, ((u32)tlbmanageGetTlbAllocatedBlock() - (u32)start));
+#else
+    /* PC port: the game arena is one allocation (port/src/memory.c) */
+    start = (u32)portMemArenaStart();
+    mempCheckMemflagTokens(start, portMemArenaSize());
+#endif
     mempResetBank(MEMPOOL_PERMANENT);
     langInit();
     lvInit();
@@ -436,7 +446,13 @@ void bossMainloop(void)
         init_player_data_ptrs_construct_viewports(localSelectedNumPlayers);
         dynInitMemory();
         joyCheckStatusThreadSafe();
+#ifdef TARGET_N64
         lvlStageLoad(g_StageNum);
+#else
+        if (!g_PortConfig.stubstage) {
+            lvlStageLoad(g_StageNum);
+        }
+#endif
         viInitBuffers();
         debmenuRefresh();
         waitForNextFrame();
@@ -535,7 +551,13 @@ void bossMainloop(void)
                                 }
                             }
 
+#ifdef TARGET_N64
                             gdl = lvlRender(gdl);
+#else
+                            if (!g_PortConfig.stubstage) {
+                                gdl = lvlRender(gdl);
+                            }
+#endif
 
                             // Lets Visualise the Coverage Value used for Scilohete Anti-Ailising (edges)
                             // (done on the VI), also produces a cool looking linemode - providing AA is working.

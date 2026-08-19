@@ -18,42 +18,42 @@ Horizontal Scroll:
 [x] 'width' value like in image mapping to shift the image; short hex percent
 [t]ime the move occurs in
 */
-#define MONHORZSCROLL(x,t) 0x1, x, t
+#define MONHORZSCROLL(x,t) 0x1, MONWORDVAL(x), MONWORDVAL(t)
 /*
 Vertical Scroll:
 00000002	yyyyyyyy	tttttttt
 [y] 'height' value like in image mapping to shift image; short hex percent
 [t]ime the move occurs in
 */
-#define MONVERTSCROLL(y,t) 0x2, y, t
+#define MONVERTSCROLL(y,t) 0x2, MONWORDVAL(y), MONWORDVAL(t)
 /*
 Horizontal Scroll Nonadditive:
 00000003	xxxxxxxx	tttttttt
 [x] 'width' value shifting the image from original position; short hex percent
 [t]ime the move occurs in
 */
-#define MONHORZSCROLLNA(x,t) 0x3, x, t
+#define MONHORZSCROLLNA(x,t) 0x3, MONWORDVAL(x), MONWORDVAL(t)
 /*
 Vertical Scroll Nonadditive:
 00000004	yyyyyyyy	tttttttt
 [y] 'height' value shifting the image from original position; short hex percent
 [t]ime the move occurs in
 */
-#define MONVERTSCROLLNA(y,t) 0x4, y, t
+#define MONVERTSCROLLNA(y,t) 0x4, MONWORDVAL(y), MONWORDVAL(t)
 /*
 Zoom Width:
 00000005	xxxxxxxx	tttttttt
 [x] zoom factor as a short hex percentage
 [t]ime for complete zoom
 */
-#define MONZOOMWIDTH(x,t) 0x5, x, t
+#define MONZOOMWIDTH(x,t) 0x5, MONWORDVAL(x), MONWORDVAL(t)
 /*
 Zoom Height:
 00000006	yyyyyyyy	tttttttt
 [x] zoom factor as a short hex percentage
 [t]ime for complete zoom
 */
-#define MONZOOMHEIGHT(y,t) 0x6, y, t
+#define MONZOOMHEIGHT(y,t) 0x6, MONWORDVAL(y), MONWORDVAL(t)
 
 #define MONZOOMSQUARE(w,t) MONZOOMWIDTH(w, t), MONZOOMHEIGHT(w, t)
 
@@ -62,26 +62,26 @@ Use image:
 00000007	000000xx
 xx is image number in global image list, starting with 0=BOND
 */
-#define MONUSEIMAGE(x) 0x7, x
+#define MONUSEIMAGE(x) 0x7, MONWORDVAL(x)
 /*
 Hold for Time:
 00000008	tttttttt
 [t]ime to hold; necessary to break loops, like the 03 action command
 */
-#define MONHOLDTIME(t) 0x8, t
+#define MONHOLDTIME(t) 0x8, MONWORDVAL(t)
 /*
 Jump to Routine:
 00000009	pppppppp
 [p]ointer to another animation routine where processing resumes
 */
-#define MONJUMPTO(p) 0x9, p
+#define MONJUMPTO(p) 0x9, MONWORDPTR(p)
 /*
 Jump on Chance:
 0000000A	pppppppp	0000xxxx
 [p]ointer to another animation routine where processing resumes
 [x] value to test against a random value.  Jump if rand < xxxx
 */
-#define MONJUMPCHANCE(p,x) 0xA, p, x
+#define MONJUMPCHANCE(p,x) 0xA, MONWORDPTR(p), MONWORDVAL(x)
 /*
 Loop:
 0000000B
@@ -100,21 +100,21 @@ RGBA:
 New [R]ed, [G]reen, [B]lue, and [A]lpha components
 [t]ime for complete transition
 */
-#define MONRGBA(rgba, t) 0xD, rgba, t
+#define MONRGBA(rgba, t) 0xD, MONWORDVAL(rgba), MONWORDVAL(t)
 /*
 Set Rotation:
 0000000E	rrrrrrrr
 set image [r]otation; 0x2000 rotates 360 degrees
 primarily used to reset rotation to 0
 */
-#define MONSETROTATION(r) 0xE, r
+#define MONSETROTATION(r) 0xE, MONWORDVAL(r)
 /*
 Rotate Image:
 0000000F	rrrr.rrrr
 [r]otate image incrementally rrrr.rrrr%;
 0x2000 rotates approximately 45 degrees, 0x1555 to mimic a clock
 */
-#define MONROTATEIMAGE(r) 0xF, r
+#define MONROTATEIMAGE(r) 0xF, MONWORDVAL(r)
 
 #define COLOR_WHITE 0xFFFFFFFF
 
@@ -186,38 +186,38 @@ struct roomproplistblock
 
 extern struct SetupPtrs g_SetupPtrs;
 
-extern u32 monAnimRadarSub1[];
-extern u32 monAnimRadarSub2[];
-extern u32 monAnimRadarSub3[];
-extern u32 monAnim0BRadar[];
-extern u32 monAnim0CSpinningCube[];
-extern u32 monAnim17RandImageEffect[];
-extern u32 monRandEffectChanceSHUTTLE1[];
-extern u32 monRandEffectChanceSHUTTLE2[];
-extern u32 monRandEffectChanceEARTHFULL1[];
-extern u32 monRandEffectChanceEARTHFULL2[];
-extern u32 monRandEffectChanceBLUESTARS[];
-extern u32 monRandEffectChanceGALAXY1[];
-extern u32 monRandEffectChanceGALAXY2[];
-extern u32 monRandEffectChanceEARTHTEXT[];
-extern u32 monRandEffectChanceTARGETEARTH[];
-extern u32 monRandEffectChanceGALAXY3[];
-extern u32 monRandChanceScrollOrZoomRandRGBN[];
+extern monword monAnimRadarSub1[];
+extern monword monAnimRadarSub2[];
+extern monword monAnimRadarSub3[];
+extern monword monAnim0BRadar[];
+extern monword monAnim0CSpinningCube[];
+extern monword monAnim17RandImageEffect[];
+extern monword monRandEffectChanceSHUTTLE1[];
+extern monword monRandEffectChanceSHUTTLE2[];
+extern monword monRandEffectChanceEARTHFULL1[];
+extern monword monRandEffectChanceEARTHFULL2[];
+extern monword monRandEffectChanceBLUESTARS[];
+extern monword monRandEffectChanceGALAXY1[];
+extern monword monRandEffectChanceGALAXY2[];
+extern monword monRandEffectChanceEARTHTEXT[];
+extern monword monRandEffectChanceTARGETEARTH[];
+extern monword monRandEffectChanceGALAXY3[];
+extern monword monRandChanceScrollOrZoomRandRGBN[];
 extern u32 D_80031B10[];
-extern u32 monRandChanceScrollOrZoomRed[];
-extern u32 monRandChanceScrollOrZoomGreen[];
-extern u32 monRandChanceScrollOrZoomBlue[];
-extern u32 monRandChanceScrollOrZoom[];
-extern u32 monAnim27RandomEffectScrollRight[];
-extern u32 monAnim28RandomEffectScrollUpFast[];
-extern u32 monAnim29RandomEffectScrollUp[];
-extern u32 monAnim2ARandEffectScrollZoom1[];
-extern u32 monAnim2ARandEffectScrollZoom2[];
-extern u32 monAnim2CRandEffectWaitRoute[];
-extern u32 monAnim2DRandEffectFlash[];
-extern u32 monAnim00Bond[];
-extern u32 monAnim34[];
-extern u32 monAnim35Taser[];
+extern monword monRandChanceScrollOrZoomRed[];
+extern monword monRandChanceScrollOrZoomGreen[];
+extern monword monRandChanceScrollOrZoomBlue[];
+extern monword monRandChanceScrollOrZoom[];
+extern monword monAnim27RandomEffectScrollRight[];
+extern monword monAnim28RandomEffectScrollUpFast[];
+extern monword monAnim29RandomEffectScrollUp[];
+extern monword monAnim2ARandEffectScrollZoom1[];
+extern monword monAnim2ARandEffectScrollZoom2[];
+extern monword monAnim2CRandEffectWaitRoute[];
+extern monword monAnim2DRandEffectFlash[];
+extern monword monAnim00Bond[];
+extern monword monAnim34[];
+extern monword monAnim35Taser[];
 extern WeaponObjRecord* proxy_mine_table[30];
 extern f32 gasTimeToFullOpacity;
 extern u32 gasDoesDamageFlag;

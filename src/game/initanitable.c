@@ -1,4 +1,7 @@
 #include <ultra64.h>
+#ifndef TARGET_N64
+#include "port.h"
+#endif
 #include <memp.h>
 #include "initanitable.h"
 #include "objecthandler.h"
@@ -230,6 +233,7 @@ struct anim_entry
     s32 unk10;
 };
 
+#ifdef TARGET_N64
 void expand_ani_table_entries(s32** arg0)
 {
     s32** var_v0;
@@ -250,6 +254,57 @@ void expand_ani_table_entries(s32** arg0)
         }
     }
 }
+#else
+/**
+ * PC: the two anim tables have DIFFERENT slot widths once pointers are no
+ * longer 4 bytes: animation_table_ptrs1 is declared s32[] (consumers cast
+ * each s32 to a pointer), animation_table_ptrs2 is a real pointer array.
+ * On 32-bit they coincide; on 64-bit the s32** walk overran ptrs1 into
+ * ptrs2 and double-promoted it. Walk with an explicit slot width instead.
+ * All promoted values stay below 2GB (MAP_32BIT arena), so they fit in s32.
+ */
+static void expand_ani_table_entries_stride(void *tbl, s32 slotIsPtrWide)
+{
+    u8 *slot = tbl;
+    u8 *base = (u8 *)&ptr_animation_table->data;
+    s32 pass;
+
+    for (pass = 0; pass < 2; pass++) {
+        for (slot = tbl; ; slot += slotIsPtrWide ? sizeof(void *) : sizeof(s32)) {
+            uintptr_t v = slotIsPtrWide ? *(uintptr_t *)slot
+                                        : (uintptr_t)(u32)*(s32 *)slot;
+            if (v == 0) {
+                break;
+            }
+            if (v == 1) {
+                continue;
+            }
+            if (pass == 0) {
+                u8 *hdr = base + (u32)v;
+
+                /* PORT_PREPROCESS: swap the BE header before its offsets
+                 * are promoted below */
+                portSwapAnimHeader(hdr, base);
+                ((struct anim_entry *)hdr)->unk08 += (s32)(uintptr_t)base;
+                ((struct anim_entry *)hdr)->unk10 += (s32)(uintptr_t)base;
+                if (slotIsPtrWide) {
+                    *(uintptr_t *)slot = (uintptr_t)hdr;
+                } else {
+                    *(s32 *)slot = (s32)(uintptr_t)hdr;
+                }
+            } else {
+                *(s32 *)v += (s32)(uintptr_t)&_animation_entriesSegmentRomStart;
+            }
+        }
+    }
+}
+
+void expand_ani_table_entries(s32** arg0)
+{
+    /* only ptrs2 (a real pointer array) comes through this signature */
+    expand_ani_table_entries_stride(arg0, 1);
+}
+#endif
 
 void alloc_load_expand_ani_table(void)
 {
@@ -263,6 +318,11 @@ void alloc_load_expand_ani_table(void)
     ptr_animation_table = mempAllocBytesInBank(animsDataSegmentSize, MEMPOOL_PERMANENT);
 
     romCopy(ptr_animation_table, &_animation_dataSegmentRomStart, animsDataSegmentSize);
+#ifdef TARGET_N64
     expand_ani_table_entries((s32*)&animation_table_ptrs1);
     expand_ani_table_entries((s32*)&animation_table_ptrs2);
+#else
+    expand_ani_table_entries_stride(&animation_table_ptrs1, 0); /* s32 slots */
+    expand_ani_table_entries_stride(&animation_table_ptrs2, 1); /* pointer slots */
+#endif
 }
