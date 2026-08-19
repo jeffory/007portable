@@ -6761,6 +6761,38 @@ void MoveBond(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
         g_CurrentPlayer->vv_theta = stack_padding_9;
     }
 
+#ifndef TARGET_N64
+    /* PORT: direct mouse aim — apply the accumulated mouse deltas straight
+     * to the view angles (no virtual-stick translation, no turn speed cap).
+     * Always consume so gated-off frames (pause, tank, cinema) don't bank a
+     * view snap; bondviewApplyVertaTheta below wraps/clamps and rebuilds the
+     * derived trig. Aim mode keeps the stick path (crosshair tracking). */
+    {
+        extern void portInputSetAimMode(s32 aiming);
+        extern s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta);
+        f32 mdx;
+        f32 mdy;
+        s32 have = portInputConsumeMouseLook(&mdx, &mdy);
+
+        portInputSetAimMode(g_CurrentPlayer->insightaimmode);
+
+        if (have
+            && !g_CurrentPlayer->insightaimmode
+            && g_PlayerIsInTank != 1
+            && g_CurrentPlayer->pause_state == 0
+            && g_CurrentPlayer->cameramode == 0) {
+            g_CurrentPlayer->vv_theta += mdx;
+            while (g_CurrentPlayer->vv_theta < 0.0f) {
+                g_CurrentPlayer->vv_theta += 360.0f;
+            }
+            while (g_CurrentPlayer->vv_theta >= 360.0f) {
+                g_CurrentPlayer->vv_theta -= 360.0f;
+            }
+            g_CurrentPlayer->vv_verta -= mdy;
+        }
+    }
+#endif
+
     bondviewApplyVertaTheta();
 
     // Handle crouching, and animation between standing and crouching.

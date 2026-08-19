@@ -17,3 +17,15 @@ int portMouselookGrabbed(void)
 {
     return 0;
 }
+
+void portInputSetAimMode(s32 aiming)
+{
+    (void)aiming;
+}
+
+s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta)
+{
+    (void)dtheta;
+    (void)dverta;
+    return 0;
+}

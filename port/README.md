@@ -25,7 +25,11 @@ fully-featured one.
 ## Controls
 
 Mouselook is on by default (`PORT_MOUSELOOK=0` disables, F1 releases the
-mouse): the mouse looks/turns, WASD moves, LMB fires, RMB aims, R
+mouse): mouse deltas are injected directly into the view angles
+(1 px = `sensitivity` × 0.05°, no virtual-stick quantization or turn
+speed cap; `PORT_DIRECT_AIM=0` falls back to the stick translation, and
+aim mode always uses the stick path so the crosshair tracks the mouse).
+WASD moves, LMB fires, RMB aims, R
 reloads (GE's B action, so it also opens doors), Space also fires,
 X/F = A, C = B, Enter = Start, Q/E = shoulder buttons, arrows = analog
 stick, IJKL = raw C buttons. With mouselook off the game runs its stock

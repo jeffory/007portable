@@ -42,6 +42,35 @@ static int sMouseGrabbed;
 static int sMouseInvert;
 static float sMouseSens = 2.0f;
 
+/* Direct aim (default on, PORT_DIRECT_AIM=0 falls back to the stick path):
+ * mouse deltas accumulate here in degrees and bondview injects them
+ * straight into the view angles — no virtual-stick translation, no turn
+ * speed cap. Aim mode (R held) still routes the mouse through the stick so
+ * the crosshair tracks it. */
+#define DIRECT_AIM_DEG_PER_COUNT 0.05f
+
+static int sDirectAim = -1;
+static int sAimMode;
+static float sLookAccumX;
+static float sLookAccumY;
+
+void portInputSetAimMode(s32 aiming)
+{
+    sAimMode = aiming != 0;
+}
+
+s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta)
+{
+    if (sDirectAim <= 0 || sMouselook <= 0 || !sMouseGrabbed) {
+        return 0;
+    }
+    *dtheta = sLookAccumX;
+    *dverta = sLookAccumY;
+    sLookAccumX = 0.0f;
+    sLookAccumY = 0.0f;
+    return 1;
+}
+
 /* ---- configurable keybindings ---------------------------------------------
  * Loaded from $PORT_INPUT_CONFIG, else $XDG_CONFIG_HOME/ge007/input.ini,
  * else ~/.config/ge007/input.ini. A commented default file is written on
@@ -525,11 +554,22 @@ void portInputRead(OSContPad *pads)
         }
 
         if (sMouseGrabbed) {
-            /* dx > 0 (mouse right) turns right: +stick_x.
-             * dy > 0 (mouse down) must pitch down: with GE's default
-             * (flight-style) pitch, stick +Y looks down, so +stick_y. */
-            x += (s32)((f32)dx * sMouseSens);
-            y += (s32)((f32)(sMouseInvert ? -dy : dy) * sMouseSens);
+            if (sDirectAim < 0) {
+                const char *e = getenv("PORT_DIRECT_AIM");
+                sDirectAim = (e == NULL) || (e[0] != '0');
+            }
+            if (sDirectAim > 0 && !sAimMode) {
+                /* accumulate in degrees for the bondview direct injection;
+                 * dy > 0 (mouse down) pitches down = vv_verta decreases */
+                sLookAccumX += (f32)dx * sMouseSens * DIRECT_AIM_DEG_PER_COUNT;
+                sLookAccumY += (f32)(sMouseInvert ? -dy : dy) * sMouseSens * DIRECT_AIM_DEG_PER_COUNT;
+            } else {
+                /* virtual-stick path: dx > 0 (mouse right) turns right =
+                 * +stick_x; dy > 0 (mouse down) pitches down: with GE's
+                 * default (flight-style) pitch, stick +Y looks down. */
+                x += (s32)((f32)dx * sMouseSens);
+                y += (s32)((f32)(sMouseInvert ? -dy : dy) * sMouseSens);
+            }
         }
     }
 

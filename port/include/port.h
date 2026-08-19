@@ -55,6 +55,10 @@ u64  portPlatformTimeNs(void);               /* monotonic */
 void portSwapU32InPlace(void *data, u32 size);
 void portSwapTextBank(u32 *bank);
 void portSwapBriefingData(void *data);
+
+/* input (port/src/input_sdl.c) */
+void portInputSetAimMode(s32 aiming);
+s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta);
 void portSwapGlobalImagetable(void *data, u32 size);
 void portSwapRarewareLogo(void *data, u32 size);
 void portSwapAnimHeader(void *header, void *blobBase);
