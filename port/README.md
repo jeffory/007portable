@@ -22,6 +22,24 @@ loader prints a PORT_TODO warning) and audio (disabled unless
 through native-width ALBank structs). The 32-bit build remains the
 fully-featured one.
 
+## Controls
+
+Mouselook is on by default (`PORT_MOUSELOOK=0` disables, F1 releases the
+mouse): the mouse looks/turns, WASD moves, LMB fires, RMB aims, R
+reloads (GE's B action, so it also opens doors), Space also fires,
+X/F = A, C = B, Enter = Start, Q/E = shoulder buttons, arrows = analog
+stick, IJKL = raw C buttons. With mouselook off the game runs its stock
+1.1 control style and WASD drives the analog stick (tank-style, like the
+N64). Gamepads work via SDL_GameController with hotplug.
+
+All key/mouse bindings are configurable: a commented
+`~/.config/ge007/input.ini` is written on first run (respects
+`XDG_CONFIG_HOME`; `PORT_INPUT_CONFIG=<path>` overrides). Keys are SDL
+scancode names (`W`, `Left Shift`, `Return`, ...) or `Mouse1`..`Mouse5`,
+up to 4 per action, and the file also holds mouse `sensitivity` and
+`invert`. Delete it to regenerate the defaults. `PORT_INPUT_TRACE=1`
+logs pressed keys and the resulting pad state once a second.
+
 **Status: milestone M4 — audio works.** Music and sound effects
 synthesize through GoldenEye's own libultra sequencer/synthesizer,
 compiled natively and driving a software implementation of the RSP audio

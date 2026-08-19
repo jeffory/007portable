@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <ultra64.h>
 #include "port.h"
 
@@ -40,6 +41,225 @@ static int sMouselook = -1;          /* -1 = env not read yet */
 static int sMouseGrabbed;
 static int sMouseInvert;
 static float sMouseSens = 2.0f;
+
+/* ---- configurable keybindings ---------------------------------------------
+ * Loaded from $PORT_INPUT_CONFIG, else $XDG_CONFIG_HOME/ge007/input.ini,
+ * else ~/.config/ge007/input.ini. A commented default file is written on
+ * first run. Format: "action = key[, key...]" — key names are SDL scancode
+ * names ("W", "Left Shift", "Return", ...) or Mouse1..Mouse5. */
+
+#define MAX_KEYS_PER_ACTION 4
+
+enum {
+    IN_FORWARD, IN_BACK, IN_LEFT, IN_RIGHT,       /* semantic move (style-aware) */
+    IN_FIRE, IN_AIM,                              /* Z / R triggers */
+    IN_A, IN_B, IN_START, IN_LSHOULDER,
+    IN_C_UP, IN_C_DOWN, IN_C_LEFT, IN_C_RIGHT,    /* raw C buttons */
+    IN_STICK_UP, IN_STICK_DOWN, IN_STICK_LEFT, IN_STICK_RIGHT,
+    IN_GRAB_TOGGLE,
+    IN_COUNT
+};
+
+static const char *const sActionNames[IN_COUNT] = {
+    "forward", "back", "left", "right",
+    "fire", "aim",
+    "a", "b", "start", "l",
+    "c_up", "c_down", "c_left", "c_right",
+    "stick_up", "stick_down", "stick_left", "stick_right",
+    "grab_toggle",
+};
+
+static const char *const sActionHelp[IN_COUNT] = {
+    "move forward", "move back",
+    "move left (strafe under mouselook, turn otherwise)",
+    "move right",
+    "fire (Z trigger)", "aim (R trigger)",
+    "A button (accept / cycle weapon)",
+    "B button (reload / open doors / activate)",
+    "Start (pause)", "L shoulder button",
+    "C up (raw)", "C down (raw)", "C left (raw)", "C right (raw)",
+    "analog stick up (raw)", "analog stick down (raw)",
+    "analog stick left (raw)", "analog stick right (raw)",
+    "toggle the mouselook grab",
+};
+
+static const char *const sDefaultBindings[IN_COUNT] = {
+    "W", "S", "A", "D",
+    "Space, Mouse1", "E, Mouse2",
+    "X, F", "C, R", "Return", "Q",
+    "I", "K", "J", "L",
+    "Up", "Down", "Left", "Right",
+    "F1",
+};
+
+static struct {
+    SDL_Scancode keys[MAX_KEYS_PER_ACTION];
+    int numkeys;
+    Uint32 mousemask;
+} sBind[IN_COUNT];
+
+static void bindParseAction(int action, const char *value)
+{
+    char buf[128];
+    char *tok;
+    char *save = NULL;
+
+    sBind[action].numkeys = 0;
+    sBind[action].mousemask = 0;
+
+    snprintf(buf, sizeof(buf), "%s", value);
+
+    for (tok = strtok_r(buf, ",", &save); tok != NULL; tok = strtok_r(NULL, ",", &save)) {
+        char *end;
+        SDL_Scancode sc;
+
+        while (*tok == ' ' || *tok == '\t') tok++;
+        end = tok + strlen(tok);
+        while (end > tok && (end[-1] == ' ' || end[-1] == '\t')) *--end = '\0';
+        if (*tok == '\0') continue;
+
+        if (SDL_strncasecmp(tok, "mouse", 5) == 0 && tok[5] >= '1' && tok[5] <= '5' && tok[6] == '\0') {
+            sBind[action].mousemask |= SDL_BUTTON(tok[5] - '0');
+            continue;
+        }
+
+        sc = SDL_GetScancodeFromName(tok);
+        if (sc == SDL_SCANCODE_UNKNOWN) {
+            fprintf(stderr, "port/input: unknown key name '%s' for %s (see SDL scancode names)\n",
+                    tok, sActionNames[action]);
+            continue;
+        }
+        if (sBind[action].numkeys < MAX_KEYS_PER_ACTION) {
+            sBind[action].keys[sBind[action].numkeys++] = sc;
+        }
+    }
+}
+
+static const char *bindConfigPath(char *buf, size_t len)
+{
+    const char *e = getenv("PORT_INPUT_CONFIG");
+    const char *xdg;
+
+    if (e != NULL && e[0] != '\0') {
+        snprintf(buf, len, "%s", e);
+        return buf;
+    }
+    xdg = getenv("XDG_CONFIG_HOME");
+    if (xdg != NULL && xdg[0] != '\0') {
+        snprintf(buf, len, "%s/ge007/input.ini", xdg);
+    } else {
+        const char *home = getenv("HOME");
+        snprintf(buf, len, "%s/.config/ge007/input.ini", home != NULL ? home : ".");
+    }
+    return buf;
+}
+
+static void bindWriteDefaultFile(const char *path)
+{
+    char dir[512];
+    char *slash;
+    FILE *f;
+    int i;
+
+    snprintf(dir, sizeof(dir), "%s", path);
+    slash = strrchr(dir, '/');
+    if (slash != NULL) {
+        *slash = '\0';
+        /* best-effort mkdir -p for the last two levels */
+        char parent[512];
+        snprintf(parent, sizeof(parent), "%s", dir);
+        slash = strrchr(parent, '/');
+        if (slash != NULL) { *slash = '\0'; mkdir(parent, 0755); }
+        mkdir(dir, 0755);
+    }
+
+    f = fopen(path, "w");
+    if (f == NULL) {
+        return;
+    }
+    fprintf(f, "# GoldenEye 007 PC port — input bindings\n");
+    fprintf(f, "# action = key[, key...]   keys are SDL scancode names (\"W\", \"Left Shift\",\n");
+    fprintf(f, "# \"Return\", \"Keypad 5\", ...) or Mouse1..Mouse5. Up to %d per action.\n", MAX_KEYS_PER_ACTION);
+    fprintf(f, "# Delete this file to regenerate the defaults.\n\n");
+    for (i = 0; i < IN_COUNT; i++) {
+        fprintf(f, "# %s\n%s = %s\n\n", sActionHelp[i], sActionNames[i], sDefaultBindings[i]);
+    }
+    fprintf(f, "# mouselook (PORT_MOUSE_SENS / PORT_MOUSE_INVERT env vars override)\n");
+    fprintf(f, "sensitivity = 2.0\ninvert = 0\n");
+    fclose(f);
+    fprintf(stderr, "port/input: wrote default bindings to %s\n", path);
+}
+
+static void bindLoad(void)
+{
+    char path[512];
+    FILE *f;
+    char line[256];
+    int i;
+
+    for (i = 0; i < IN_COUNT; i++) {
+        bindParseAction(i, sDefaultBindings[i]);
+    }
+
+    bindConfigPath(path, sizeof(path));
+    f = fopen(path, "r");
+    if (f == NULL) {
+        bindWriteDefaultFile(path);
+        return;
+    }
+
+    while (fgets(line, sizeof(line), f) != NULL) {
+        char *eq;
+        char *name = line;
+        char *val;
+        char *end;
+
+        while (*name == ' ' || *name == '\t') name++;
+        if (*name == '#' || *name == ';' || *name == '\n' || *name == '\0' || *name == '[') continue;
+        eq = strchr(name, '=');
+        if (eq == NULL) continue;
+        val = eq + 1;
+        while (eq > name && (eq[-1] == ' ' || eq[-1] == '\t')) eq--;
+        *eq = '\0';
+        while (*val == ' ' || *val == '\t') val++;
+        end = val + strlen(val);
+        while (end > val && (end[-1] == '\n' || end[-1] == '\r' || end[-1] == ' ')) *--end = '\0';
+
+        if (strcmp(name, "sensitivity") == 0) {
+            if (atof(val) > 0.0) sMouseSens = (float)atof(val);
+            continue;
+        }
+        if (strcmp(name, "invert") == 0) {
+            sMouseInvert = atoi(val) != 0;
+            continue;
+        }
+        for (i = 0; i < IN_COUNT; i++) {
+            if (strcmp(name, sActionNames[i]) == 0) {
+                bindParseAction(i, val);
+                break;
+            }
+        }
+        if (i == IN_COUNT) {
+            fprintf(stderr, "port/input: unknown action '%s' in %s\n", name, path);
+        }
+    }
+    fclose(f);
+    fprintf(stderr, "port/input: bindings loaded from %s\n", path);
+}
+
+static int actionDown(const Uint8 *keys, Uint32 mousemask, int action)
+{
+    int i;
+
+    if (keys != NULL) {
+        for (i = 0; i < sBind[action].numkeys; i++) {
+            if (keys[sBind[action].keys[i]]) {
+                return 1;
+            }
+        }
+    }
+    return (sBind[action].mousemask & mousemask) != 0;
+}
 
 static s32 clampStick(s32 v)
 {
@@ -103,6 +323,8 @@ void portInputInit(void)
         padScan();
     }
 
+    bindLoad(); /* keybindings + mouse settings; env vars below override */
+
     {
         /* Mouselook defaults ON (PORT_MOUSELOOK=0 disables): the mouse
          * drives the stick (turn/look), WASD moves via the forced 1.2
@@ -117,7 +339,9 @@ void portInputInit(void)
         if (sens != NULL && atof(sens) > 0.0) {
             sMouseSens = (float)atof(sens);
         }
-        sMouseInvert = getenv("PORT_MOUSE_INVERT") != NULL;
+        if (getenv("PORT_MOUSE_INVERT") != NULL) {
+            sMouseInvert = 1;
+        }
         mouselookSetGrab(1);
         fprintf(stderr, "port/input: mouselook on (sens %.2f%s) — use control style 1.2, F1 releases the mouse\n",
                 sMouseSens, sMouseInvert ? ", inverted" : "");
@@ -241,60 +465,63 @@ void portInputRead(OSContPad *pads)
         if (SDL_GameControllerGetButton(sPad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) buttons |= R_JPAD;
     }
 
-    /* ---- keyboard ---------------------------------------------------- */
-    if (keys != NULL) {
-        if (keys[SDL_SCANCODE_LEFT])  x -= STICK_MAX;
-        if (keys[SDL_SCANCODE_RIGHT]) x += STICK_MAX;
-        if (keys[SDL_SCANCODE_DOWN])  y -= STICK_MAX;
-        if (keys[SDL_SCANCODE_UP])    y += STICK_MAX;
+    /* ---- keyboard + mouse buttons (configurable bindings) ------------- */
+    {
+        int dx = 0, dy = 0;
+        Uint32 mb = 0;
 
-        if (keys[SDL_SCANCODE_RETURN]) buttons |= START_BUTTON;
-        if (keys[SDL_SCANCODE_X])      buttons |= A_BUTTON;
-        if (keys[SDL_SCANCODE_C])      buttons |= B_BUTTON;
-        /* GE reloads (and opens doors) with B; R is where PC hands expect it */
-        if (keys[SDL_SCANCODE_R])      buttons |= B_BUTTON;
-        /* F = A (weapon cycle / accept) for the same reason */
-        if (keys[SDL_SCANCODE_F])      buttons |= A_BUTTON;
-        if (keys[SDL_SCANCODE_SPACE])  buttons |= Z_TRIG;
-        if (keys[SDL_SCANCODE_Q])      buttons |= L_TRIG;
-        if (keys[SDL_SCANCODE_E])      buttons |= R_TRIG;
-        if (keys[SDL_SCANCODE_I])      buttons |= U_CBUTTONS;
-        if (keys[SDL_SCANCODE_K])      buttons |= D_CBUTTONS;
-        if (keys[SDL_SCANCODE_J])      buttons |= L_CBUTTONS;
-        if (keys[SDL_SCANCODE_L])      buttons |= R_CBUTTONS;
-        /* WASD always means "move", whatever moves in the active style:
+        if (sMouselook > 0) {
+            mb = SDL_GetRelativeMouseState(&dx, &dy);
+
+            /* grab toggle (edge-triggered) */
+            {
+                static int prevToggle;
+                int t = actionDown(keys, 0, IN_GRAB_TOGGLE);
+
+                if (t && !prevToggle) {
+                    mouselookSetGrab(!sMouseGrabbed);
+                }
+                prevToggle = t;
+            }
+        }
+        if (!sMouseGrabbed) {
+            mb = 0; /* mouse buttons only act while the mouse is captured */
+        }
+
+        /* raw stick / buttons */
+        if (actionDown(keys, mb, IN_STICK_LEFT))  x -= STICK_MAX;
+        if (actionDown(keys, mb, IN_STICK_RIGHT)) x += STICK_MAX;
+        if (actionDown(keys, mb, IN_STICK_DOWN))  y -= STICK_MAX;
+        if (actionDown(keys, mb, IN_STICK_UP))    y += STICK_MAX;
+
+        if (actionDown(keys, mb, IN_START))     buttons |= START_BUTTON;
+        if (actionDown(keys, mb, IN_A))         buttons |= A_BUTTON;
+        if (actionDown(keys, mb, IN_B))         buttons |= B_BUTTON;
+        if (actionDown(keys, mb, IN_FIRE))      buttons |= Z_TRIG;
+        if (actionDown(keys, mb, IN_AIM))       buttons |= R_TRIG;
+        if (actionDown(keys, mb, IN_LSHOULDER)) buttons |= L_TRIG;
+        if (actionDown(keys, mb, IN_C_UP))      buttons |= U_CBUTTONS;
+        if (actionDown(keys, mb, IN_C_DOWN))    buttons |= D_CBUTTONS;
+        if (actionDown(keys, mb, IN_C_LEFT))    buttons |= L_CBUTTONS;
+        if (actionDown(keys, mb, IN_C_RIGHT))   buttons |= R_CBUTTONS;
+
+        /* forward/back/left/right always mean "move", whatever moves in the
+         * active style:
          * - mouselook grabbed: the port forces style 1.2 Solitaire, where
          *   the C buttons move (the stick is the mouse's look axis)
          * - otherwise: the game defaults to 1.1 Honey, where the analog
          *   stick moves/turns (tank-style, like the N64 original) and the
          *   C buttons would be look/strafe */
         if (sMouselook > 0 && sMouseGrabbed) {
-            if (keys[SDL_SCANCODE_W])  buttons |= U_CBUTTONS;
-            if (keys[SDL_SCANCODE_S])  buttons |= D_CBUTTONS;
-            if (keys[SDL_SCANCODE_A])  buttons |= L_CBUTTONS;
-            if (keys[SDL_SCANCODE_D])  buttons |= R_CBUTTONS;
+            if (actionDown(keys, mb, IN_FORWARD)) buttons |= U_CBUTTONS;
+            if (actionDown(keys, mb, IN_BACK))    buttons |= D_CBUTTONS;
+            if (actionDown(keys, mb, IN_LEFT))    buttons |= L_CBUTTONS;
+            if (actionDown(keys, mb, IN_RIGHT))   buttons |= R_CBUTTONS;
         } else {
-            if (keys[SDL_SCANCODE_W])  y += STICK_MAX;
-            if (keys[SDL_SCANCODE_S])  y -= STICK_MAX;
-            if (keys[SDL_SCANCODE_A])  x -= STICK_MAX;
-            if (keys[SDL_SCANCODE_D])  x += STICK_MAX;
-        }
-    }
-
-    /* ---- mouselook ---------------------------------------------------- */
-    if (sMouselook > 0) {
-        int dx, dy;
-        Uint32 mb = SDL_GetRelativeMouseState(&dx, &dy);
-
-        /* F1 toggles the grab (edge-triggered) */
-        {
-            static int prevF1;
-            int f1 = keys != NULL && keys[SDL_SCANCODE_F1];
-
-            if (f1 && !prevF1) {
-                mouselookSetGrab(!sMouseGrabbed);
-            }
-            prevF1 = f1;
+            if (actionDown(keys, mb, IN_FORWARD)) y += STICK_MAX;
+            if (actionDown(keys, mb, IN_BACK))    y -= STICK_MAX;
+            if (actionDown(keys, mb, IN_LEFT))    x -= STICK_MAX;
+            if (actionDown(keys, mb, IN_RIGHT))   x += STICK_MAX;
         }
 
         if (sMouseGrabbed) {
@@ -303,9 +530,6 @@ void portInputRead(OSContPad *pads)
              * (flight-style) pitch, stick +Y looks down, so +stick_y. */
             x += (s32)((f32)dx * sMouseSens);
             y += (s32)((f32)(sMouseInvert ? -dy : dy) * sMouseSens);
-
-            if (mb & SDL_BUTTON_LMASK) buttons |= Z_TRIG; /* fire */
-            if (mb & SDL_BUTTON_RMASK) buttons |= R_TRIG; /* aim */
         }
     }
 
