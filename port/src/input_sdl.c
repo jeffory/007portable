@@ -262,11 +262,23 @@ void portInputRead(OSContPad *pads)
         if (keys[SDL_SCANCODE_K])      buttons |= D_CBUTTONS;
         if (keys[SDL_SCANCODE_J])      buttons |= L_CBUTTONS;
         if (keys[SDL_SCANCODE_L])      buttons |= R_CBUTTONS;
-        /* WASD: movement in control style 1.2 (C buttons move there) */
-        if (keys[SDL_SCANCODE_W])      buttons |= U_CBUTTONS;
-        if (keys[SDL_SCANCODE_S])      buttons |= D_CBUTTONS;
-        if (keys[SDL_SCANCODE_A])      buttons |= L_CBUTTONS;
-        if (keys[SDL_SCANCODE_D])      buttons |= R_CBUTTONS;
+        /* WASD always means "move", whatever moves in the active style:
+         * - mouselook grabbed: the port forces style 1.2 Solitaire, where
+         *   the C buttons move (the stick is the mouse's look axis)
+         * - otherwise: the game defaults to 1.1 Honey, where the analog
+         *   stick moves/turns (tank-style, like the N64 original) and the
+         *   C buttons would be look/strafe */
+        if (sMouselook > 0 && sMouseGrabbed) {
+            if (keys[SDL_SCANCODE_W])  buttons |= U_CBUTTONS;
+            if (keys[SDL_SCANCODE_S])  buttons |= D_CBUTTONS;
+            if (keys[SDL_SCANCODE_A])  buttons |= L_CBUTTONS;
+            if (keys[SDL_SCANCODE_D])  buttons |= R_CBUTTONS;
+        } else {
+            if (keys[SDL_SCANCODE_W])  y += STICK_MAX;
+            if (keys[SDL_SCANCODE_S])  y -= STICK_MAX;
+            if (keys[SDL_SCANCODE_A])  x -= STICK_MAX;
+            if (keys[SDL_SCANCODE_D])  x += STICK_MAX;
+        }
     }
 
     /* ---- mouselook ---------------------------------------------------- */
