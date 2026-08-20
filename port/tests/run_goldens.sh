@@ -64,22 +64,37 @@ PORT_FRAME_DUMP=$T PORT_FRAME_DUMP_AT=120,400,500 PORT_FRAME_DUMP_EXIT=1 \
 [ -f "$T/frame_00500.ppm" ] || bad "boot: frame dump did not complete"
 
 # ---- dam stage ---------------------------------------------------------------
-note "dam capture (~30s)"
-mkdir -p "$T/dam_"
+# Two dam runs: the CRC capture stays on the untouched cinema boot (its
+# asset-load sequence is deterministic), while the golden FRAME needs
+# PORT_AUTOSTART to skip into the static first-person spawn view - but
+# autostart makes the lazy model-load ORDER timing-dependent, so its CRC
+# stream is not comparable.
+note "dam CRC capture (~30s)"
+mkdir -p "$T/damc_"
 PORT_CRC_TRACE=$T/dam.txt \
-PORT_FRAME_DUMP=$T/dam_ PORT_FRAME_DUMP_AT=600 PORT_FRAME_DUMP_EXIT=1 \
+PORT_FRAME_DUMP=$T/damc_ PORT_FRAME_DUMP_AT=600 PORT_FRAME_DUMP_EXIT=1 \
     run 240 --stage dam
-[ -f "$T/dam_/frame_00600.ppm" ] || bad "dam: frame dump did not complete"
+[ -f "$T/damc_/frame_00600.ppm" ] || bad "dam: CRC run did not complete"
+
+note "dam frame capture (~30s)"
+mkdir -p "$T/dam_"
+PORT_AUTOSTART=1 \
+PORT_FRAME_DUMP=$T/dam_ PORT_FRAME_DUMP_AT=900 PORT_FRAME_DUMP_EXIT=1 \
+    run 240 --stage dam
+[ -f "$T/dam_/frame_00900.ppm" ] || bad "dam: frame dump did not complete"
 
 if [ "$MODE" = capture ]; then
     mkdir -p "$GOLD"
     cp "$T/self_ai.txt"          "$GOLD/selftest_crc.txt"
     cp "$T/boot.txt"             "$GOLD/boot_crc.txt"
-    cp "$T/dam.txt"              "$GOLD/dam_crc.txt"
+    # model loads during the dam cinema are lazy (on-screen-triggered) and
+    # their order/set shifts with frame pacing; pin only the deterministic
+    # lines (bg/stan/setup/ctl/text/briefing...). Boot pins model CRCs.
+    grep -v "^CRCTRACE model:" "$T/dam.txt" > "$GOLD/dam_crc.txt"
     cp "$T/frame_00120.ppm"      "$GOLD/boot_frame_00120.ppm"
     cp "$T/frame_00400.ppm"      "$GOLD/boot_frame_00400.ppm"
     cp "$T/frame_00500.ppm"      "$GOLD/boot_frame_00500.ppm"
-    cp "$T/dam_/frame_00600.ppm" "$GOLD/dam_frame_00600.ppm"
+    cp "$T/dam_/frame_00900.ppm" "$GOLD/dam_frame_00900.ppm"
     python3 port/tests/pcmcheck.py --capture "$T/boot.pcm" "$GOLD/audio_profile.txt"
     { glxinfo -display "$DISPLAY" 2>/dev/null | grep -m1 "OpenGL version"; date -I; } \
         > "$GOLD/CAPTURED_WITH.txt" || true
@@ -91,16 +106,22 @@ fi
 note "compare CRC streams"
 diff -u "$GOLD/selftest_crc.txt" "$T/self_ai.txt"  || bad "selftest AI CRCs drifted"
 diff -u "$GOLD/boot_crc.txt"     "$T/boot.txt"     || bad "boot preprocess CRCs drifted"
-diff -u "$GOLD/dam_crc.txt"      "$T/dam.txt"      || bad "dam preprocess CRCs drifted"
+grep -v "^CRCTRACE model:" "$T/dam.txt" > "$T/dam_filtered.txt"
+diff -u "$GOLD/dam_crc.txt"      "$T/dam_filtered.txt" || bad "dam preprocess CRCs drifted"
 
 note "compare frames"
+# The legal screen is static -> strict pixel compare. Frames 400/500 sit
+# inside the logo flythrough and the dam frame after the autostart cinema
+# skip: their exact animation phase shifts with machine load (no
+# deterministic clock until phase 2), so they use the histogram metric
+# (calibrated: same scene jitters <=0.06, different scenes >=0.18).
 python3 port/tests/imgdiff.py "$GOLD/boot_frame_00120.ppm" "$T/frame_00120.ppm" 0.001 \
     || bad "legal screen frame drifted"
-python3 port/tests/imgdiff.py "$GOLD/boot_frame_00400.ppm" "$T/frame_00400.ppm" 0.001 \
+python3 port/tests/imgdiff.py --hist "$GOLD/boot_frame_00400.ppm" "$T/frame_00400.ppm" 0.12 \
     || bad "logo animation frame drifted"
-python3 port/tests/imgdiff.py "$GOLD/boot_frame_00500.ppm" "$T/frame_00500.ppm" 0.001 \
+python3 port/tests/imgdiff.py --hist "$GOLD/boot_frame_00500.ppm" "$T/frame_00500.ppm" 0.12 \
     || bad "boot frame 500 drifted"
-python3 port/tests/imgdiff.py "$GOLD/dam_frame_00600.ppm" "$T/dam_/frame_00600.ppm" 0.025 \
+python3 port/tests/imgdiff.py --hist "$GOLD/dam_frame_00900.ppm" "$T/dam_/frame_00900.ppm" 0.12 \
     || bad "dam in-game frame drifted"
 
 note "audio profile"

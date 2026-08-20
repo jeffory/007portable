@@ -35,24 +35,48 @@ def read_ppm(path):
     return w, h, data[i : i + w * h * 3]
 
 
+def hist(buf, ch):
+    h = [0] * 32
+    for i in range(ch, len(buf), 3):
+        h[buf[i] >> 3] += 1
+    n = len(buf) // 3
+    return [v / n for v in h]
+
+
 def main():
-    if len(sys.argv) < 4:
+    args = [a for a in sys.argv[1:] if a != "--hist"]
+    use_hist = "--hist" in sys.argv
+    if len(args) < 3:
         sys.exit(__doc__)
-    aw, ah, a = read_ppm(sys.argv[1])
-    bw, bh, b = read_ppm(sys.argv[2])
-    max_frac = float(sys.argv[3])
-    tol = int(sys.argv[4]) if len(sys.argv) > 4 else 8
+    aw, ah, a = read_ppm(args[0])
+    bw, bh, b = read_ppm(args[1])
+    max_val = float(args[2])
+    tol = int(args[3]) if len(args) > 3 else 8
 
     if (aw, ah) != (bw, bh):
         print(f"imgdiff: size mismatch {aw}x{ah} vs {bw}x{bh}")
         sys.exit(1)
 
+    if use_hist:
+        # Per-channel 32-bin histogram L1 distance (0..2): tolerant to
+        # small view/animation-phase shifts (the pre-phase-2 world has no
+        # deterministic clock) while catching palette/black-screen/geometry
+        # regressions.
+        dist = max(
+            sum(abs(x - y) for x, y in zip(hist(a, c), hist(b, c)))
+            for c in range(3)
+        )
+        ok = dist <= max_val
+        print(f"imgdiff(hist): {args[0]} vs {args[1]}: "
+              f"L1 {dist:.4f} (limit {max_val}) -> {'OK' if ok else 'FAIL'}")
+        sys.exit(0 if ok else 1)
+
     diff = sum(1 for x, y in zip(a, b) if abs(x - y) > tol)
     frac = diff / max(len(a), 1)
-    ok = frac <= max_frac
-    print(f"imgdiff: {sys.argv[1]} vs {sys.argv[2]}: "
+    ok = frac <= max_val
+    print(f"imgdiff: {args[0]} vs {args[1]}: "
           f"{diff}/{len(a)} bytes differ (>{tol}) = {frac:.4%} "
-          f"(limit {max_frac:.4%}) -> {'OK' if ok else 'FAIL'}")
+          f"(limit {max_val:.4%}) -> {'OK' if ok else 'FAIL'}")
     sys.exit(0 if ok else 1)
 
 

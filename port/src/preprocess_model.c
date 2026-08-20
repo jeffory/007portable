@@ -997,7 +997,12 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
     struct mdlctx ctx;
     u8 *node;
     s32 i;
-    u32 realSize = size;
+    /* golden CRC accumulated over the structures this walk visits (the
+     * `size` parameter is the destination BUFFER size — its tail is pool
+     * slack whose garbage varies run to run, so it must not be hashed) */
+    u32 xcrc = 0xFFFFFFFFu;
+    u32 xlen = 0;
+#define ACC(p, n) (xcrc = portCrc32Update(xcrc, (p), (u32)(n)), xlen += (u32)(n))
 
     if (size == 0) {
         size = 0x100000; /* runaway guard only; real files are far smaller */
@@ -1011,6 +1016,7 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
     for (i = 0; i < header->numSwitches; i++) {
         SWAP32(&((u32 *)filedata)[i]);
     }
+    ACC(filedata, (u32)header->numSwitches * 4);
 
     /* texture config records: {u32 TextureID; u8 x7} */
     {
@@ -1019,6 +1025,7 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
         for (i = 0; i < header->numtextures; i++, tex += 12) {
             SWAP32(tex);
         }
+        ACC(header->Textures, (u32)header->numtextures * 12);
     }
 
     /* node tree walk mirroring modelPromoteNodeOffsetsToPointers */
@@ -1028,6 +1035,7 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
         u32 childOff;
 
         swapNodeData(&ctx, node);
+        ACC(node, 0x18); /* the fixed node record */
 
         opcode = (*(u16 *)node) & 0xFF;
         childOff = *(u32 *)(node + 0x14);
@@ -1057,9 +1065,8 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
         }
     }
 
-    if (realSize != 0) {
-        portCrcTrace("model", vma, filedata, realSize);
-    }
+    portCrcTraceValue("model", vma, xlen, xcrc ^ 0xFFFFFFFFu);
+#undef ACC
 
     mdlRegisterFile(header, filedata);
 
