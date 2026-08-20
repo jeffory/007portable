@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include "port.h"
 #include <bondconstants.h>
 #include <boss.h>
 #include <fr.h>
@@ -51,8 +52,8 @@
 #endif
 
 // bss
-Mtx gfx_background_8007B0A0;
-Mtx gfx_background_8007B0E0;
+Mtx *gfx_background_8007B0A0; /* low-alloc'd (PIE): referenced from Gfx words */
+Mtx *gfx_background_8007B0E0; /* low-alloc'd (PIE): referenced from Gfx words */
 
 u32 D_80040990 = 0;
 u32 watch_screen_index = 0;
@@ -1726,9 +1727,13 @@ Gfx *draw_background_health_and_armor(Gfx *gdl, Mtx *arg1, s32 zoom_squish)
         }
     }
 
-    guScale(&gfx_background_8007B0A0, 0.25f, 0.25f, 0.25f);
+    if (gfx_background_8007B0A0 == NULL) {
+        gfx_background_8007B0A0 = portLowAlloc(sizeof(Mtx));
+        gfx_background_8007B0E0 = portLowAlloc(sizeof(Mtx));
+    }
+    guScale(gfx_background_8007B0A0, 0.25f, 0.25f, 0.25f);
 
-    gSPMatrix(gdl++, &gfx_background_8007B0A0, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gSPMatrix(gdl++, gfx_background_8007B0A0, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (zoom_squish == 0)
     {
@@ -1742,9 +1747,9 @@ Gfx *draw_background_health_and_armor(Gfx *gdl, Mtx *arg1, s32 zoom_squish)
     /**
      * This section renders main background, side health bar & body armor bars while zooming in or out.
     */
-    guScale(&gfx_background_8007B0E0, 1, 1, scale);
+    guScale(gfx_background_8007B0E0, 1, 1, scale);
 
-    gSPMatrix(gdl++, &gfx_background_8007B0E0, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    gSPMatrix(gdl++, gfx_background_8007B0E0, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     if (zoom_squish == 1)
     {

@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include "port.h"
 #include <PR/os.h>
 #include <PR/gbi.h>
 #include <gbi_extension.h>
@@ -29,7 +30,7 @@
 // bss
 //CODE.bss:8007A100
 // possibly   printf("Allocating %d bytes for glass data (%d bits)\n",DAT_83bd5fb0 * 0x88 + 0xf & 0xfffffff0,         DAT_83bd5fb0);
-Mtx dword_CODE_bss_8007A100;
+Mtx *dword_CODE_bss_8007A100; /* low-alloc'd (PIE): referenced from Gfx words */
 
 /**
  * g_SmokeBuffer = mempAllocBytesInBank(0x1FE0, MEMPOOL_STAGE);
@@ -1497,7 +1498,10 @@ Gfx *explosionRenderPropSmoke(PropRecord *arg0, Gfx *gdl, s32 withalpha)
 
     gdl = applyRoomMatrixToDisplayList(gdl, temp_s1);
 
-    gSPMatrix(gdl++, osVirtualToPhysical((void*)&dword_CODE_bss_8007A100), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    if (dword_CODE_bss_8007A100 == NULL) {
+        dword_CODE_bss_8007A100 = portLowAlloc(sizeof(Mtx)); /* zeroed, as the bss original */
+    }
+    gSPMatrix(gdl++, osVirtualToPhysical((void*)dword_CODE_bss_8007A100), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
     gSPSegment(gdl++, SPSEGMENT_GETITLE, osVirtualToPhysical((void*)pGlobalimagetable));
 

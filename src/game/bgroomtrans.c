@@ -3,6 +3,7 @@ file bgroomtrans.c
 */
 
 #include <ultra64.h>
+#include "port.h"
 #include "player.h"
 #include "bg.h"
 #include "bgroomtrans.h"
@@ -22,7 +23,8 @@ u8 roomStatusFlags[AMT300];
 
 s32 roomIndices[AMT300]; //mtxbufferroom
 s32 roomOwners[AMT300];
-Mtx roomMatrices[AMT300];
+/* low-alloc'd (PIE): referenced from 32-bit Gfx display-list words */
+Mtx *roomMatrices;
 
 
 /**
@@ -217,6 +219,9 @@ s32 setupRoomTransformationMatrix(s32 room)
     roomTransformMatrix.m[3][1] = (ptr_bgdata_room_fileposition_list[room].pos.f[1] * room_data_float2) - g_CurrentPlayer->current_model_pos.f[1];
     roomTransformMatrix.m[3][2] = (ptr_bgdata_room_fileposition_list[room].pos.f[2] * room_data_float2) - g_CurrentPlayer->current_model_pos.f[2];
 
+    if (roomMatrices == NULL) {
+        roomMatrices = portLowAlloc(AMT300 * sizeof(Mtx));
+    }
     matrix_4x4_f32_to_s32(&roomTransformMatrix, &roomMatrices[mtx]);
 
     return mtx;

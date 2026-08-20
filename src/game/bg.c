@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include "port.h"
 #include <PR/os.h>
 #include <PR/gbi.h>
 #include <gbi_extension.h>
@@ -252,11 +253,15 @@ s32 eu_cdata_0x1f0d4 = 0;
 #endif
 
 //D:80044840
-Lights1 GlobalLight = gdSPDefLights1(
+/* Lights are referenced from 32-bit Gfx display-list words, so under PIE
+ * they must live below 4GB: portLowAlloc'd at first use from the const
+ * template. */
+static const Lights1 sGlobalLightInit = gdSPDefLights1(
     150,150,150,        /* ambient color grey */ //D:80044840
     255,255,255,
     77,77,46    /* white light from the upper west-south-west (42 up, 244') */ //D:80044848
 );
+Lights1 *GlobalLight;
 
 
 
@@ -1252,7 +1257,11 @@ void bgFindRoomsAlongSegment(coord3d *fromPos, coord3d *toPos, u8 *fromRooms, u8
 */
 Gfx *bgLevelRender(Gfx *arg0)
 {
-    gSPSetLights1(arg0++, GlobalLight);
+    if (GlobalLight == NULL) {
+        GlobalLight = portLowAlloc(sizeof(Lights1));
+        *GlobalLight = sGlobalLightInit;
+    }
+    gSPSetLights1(arg0++, (*GlobalLight));
     gSPLookAt(arg0++, sub_GAME_7F078474());
     gSPSegment(arg0++, SPSEGMENT_BG_DL, ptr_bg_data);
 
@@ -3681,7 +3690,7 @@ void sub_GAME_7F0B7F84(s32 roomnum, s32 portalnum /*canonically p*/, s32 depth, 
     struct PortalMetric metric;
     f32 playermetric;
     f32 portalmetric;
-    s32 i;
+    uintptr_t i; /* holds &D_800442FC[..] */
  
     D_80044898++;
  
@@ -3715,7 +3724,7 @@ void sub_GAME_7F0B7F84(s32 roomnum, s32 portalnum /*canonically p*/, s32 depth, 
         return;
     }
  
-    i = (s32) &D_800442FC[portalnum];
+    i = (uintptr_t) &D_800442FC[portalnum]; /* deref'd below: PIE statics live above 4GB */
 
     if (i);
  
@@ -3822,7 +3831,7 @@ s32 sub_GAME_7F0B7F84(s32 value, s32 roomnum, s32 portalnum /*canonically p*/, s
     struct PortalMetric metric;
     f32 playermetric;
     f32 portalmetric;
-    s32 i;
+    uintptr_t i; /* holds &D_800442FC[..] */
  
     D_80044898++;
  
@@ -3856,7 +3865,7 @@ s32 sub_GAME_7F0B7F84(s32 value, s32 roomnum, s32 portalnum /*canonically p*/, s
         return value;
     }
  
-    i = (s32) &D_800442FC[portalnum];
+    i = (uintptr_t) &D_800442FC[portalnum]; /* deref'd below: PIE statics live above 4GB */
 
     if (i);
  

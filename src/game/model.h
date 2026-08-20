@@ -18,7 +18,7 @@ void modelAttachHead(Model *, ModelNode*,  ModelFileHeader *);
 void clear_aircraft_model_obj(Model *objinstance);
 void modelSetDistanceDisabled(s32 param_1);
 void modelSetDistanceScale(f32 param_1);
-void set_vtxallocator(s32 param_1);
+void set_vtxallocator(void *param_1);
 void modelCalculateScaledRootToOriginDir(Model* model, coord3d* coord);
 void modelGetScaledRootToOriginDir(Model* model, coord3d* coord);
 s32 modelFindNodeMtxIndex(ModelNode *node, s32 arg1);

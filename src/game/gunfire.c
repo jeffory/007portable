@@ -74,7 +74,7 @@ extern u32 D_80035EA4;
 extern u32 watchControllerButtonBases[];
 extern GunModelFileRecord gitem_structs[];
 extern struct gun_trigger_state g_ZeroTriggerState;
-extern Lights1 g_WeaponEnvmapLight;
+Lights1 *gunGetEnvmapLight(void); /* low-alloc'd (PIE) */
 extern ALSoundState *g_ImpactSfxStates[NUM_IMPACT_SFX_STATES];
 extern struct RicochetSoundsSmall ricochet_sounds_small;
 extern struct PunchSounds punch_sounds;
@@ -1521,7 +1521,7 @@ void gunRenderFirstPersonGunModels(Gfx **gdlptr)
  
         if (item == ITEM_GOLDENGUN || item == ITEM_RUGER || item == ITEM_KNIFE || item == ITEM_THROWKNIFE || item == ITEM_SILVERWPPK || item == ITEM_GOLDWPPK) 
         {
-            gSPSetLights1(gdl++, g_WeaponEnvmapLight);
+            gSPSetLights1(gdl++, (*gunGetEnvmapLight()));
             gSPLookAt(gdl++, sub_GAME_7F078474());
         }
  
@@ -1743,7 +1743,7 @@ Gfx *set_enviro_fog_for_items_in_solo_watch_menu(Gfx *gdl, ITEM_IDS itemid, Mtxf
 
     if ((((((itemid == ITEM_GOLDENGUN) || (itemid == ITEM_RUGER)) || (itemid == ITEM_KNIFE)) || (itemid == ITEM_THROWKNIFE)) || (itemid == ITEM_SILVERWPPK)) || (itemid == ITEM_GOLDWPPK))
     {
-        gSPSetLights1(gdl++, g_WeaponEnvmapLight);
+        gSPSetLights1(gdl++, (*gunGetEnvmapLight()));
         gSPLookAt(gdl++, sub_GAME_7F078474());
     }
 

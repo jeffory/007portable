@@ -91,7 +91,8 @@ f32 gunbarrelPosition1[3] = {1758.2957f, 220.0f, 684.28143f};
 f32 gunbarrelPosition2[3] = {-0.97f, 0.0f, 0.24f};
 f32 gunbarrelPosition3[3] = {0.0f, 1.0f, -0.0f};
 
-Lights1 gunbarrelLights = gdSPDefLights1(0xDC, 0xDC, 0xDC, 0xFF, 0xFF, 0xFF, 0x00, 0x7F, 0x00);
+static const Lights1 sGunbarrelLightsInit = gdSPDefLights1(0xDC, 0xDC, 0xDC, 0xFF, 0xFF, 0xFF, 0x00, 0x7F, 0x00);
+Lights1 *gunbarrelLights; /* low-alloc'd (PIE): referenced from Gfx words */
 
 f32 cameraPosition1[3] = {0.0f, 0.0f, 4883.0f};
 f32 cameraPosition2[3] = {0.0f, 0.0f, -1.0f};
@@ -338,8 +339,12 @@ Gfx *load_display_rare_logo(Gfx *gdl, s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
     D_8002A89C += 2.0f;
 #endif
     gSPMatrix(gdl++, osVirtualToPhysical(&matrixBufferRareLogo2[D_8002A7D0]), (G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW));
-    gSPSetLights1(gdl++, gunbarrelLights);
-    gunbarrelLights.a.l.col[0] = gunbarrelLights.a.l.col[1] = gunbarrelLights.a.l.col[2] = gunbarrelLights.a.l.colc[0] = gunbarrelLights.a.l.colc[1] = gunbarrelLights.a.l.colc[2] = arg4;
+    if (gunbarrelLights == NULL) {
+        gunbarrelLights = portLowAlloc(sizeof(Lights1));
+        *gunbarrelLights = sGunbarrelLightsInit;
+    }
+    gSPSetLights1(gdl++, (*gunbarrelLights));
+    gunbarrelLights->a.l.col[0] = gunbarrelLights->a.l.col[1] = gunbarrelLights->a.l.col[2] = gunbarrelLights->a.l.colc[0] = gunbarrelLights->a.l.colc[1] = gunbarrelLights->a.l.colc[2] = arg4;
     gDPPipeSync(gdl++);
     gDPPipeSync(gdl++);
     gDPSetCombineMode(gdl++, G_CC_MODULATEI, G_CC_MODULATEI);

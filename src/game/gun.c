@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include "port.h"
 #include "include/limits.h"
 #include <bondconstants.h>
 #include <bondtypes.h>
@@ -92,10 +93,21 @@ extern f32 g_TankShellSpeed;
 /**
  * Controls the lighting on environment mapped weapons such as the Cougar Magnum and Golden Gun.
  */
-Lights1 g_WeaponEnvmapLight = gdSPDefLights1(
+static const Lights1 sWeaponEnvmapLightInit = gdSPDefLights1(
     0x96, 0x96, 0x96,   // ambient RGB
     0xff, 0xff, 0xff,   // diffuse RGB
     0xb2, 0x4d, 0x2e);  // direction
+/* low-alloc'd (PIE): referenced from 32-bit Gfx words */
+Lights1 *g_WeaponEnvmapLight;
+
+Lights1 *gunGetEnvmapLight(void)
+{
+    if (g_WeaponEnvmapLight == NULL) {
+        g_WeaponEnvmapLight = portLowAlloc(sizeof(Lights1));
+        *g_WeaponEnvmapLight = sWeaponEnvmapLightInit;
+    }
+    return g_WeaponEnvmapLight;
+}
 //D:80032454
 //u32 D_80032454 = 0;
 

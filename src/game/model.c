@@ -220,7 +220,7 @@ void sub_GAME_7F06C418(Vew4s32 *src, Vew4s32 *dst) {
 }
 
 
-void set_vtxallocator(s32 param_1) {
+void set_vtxallocator(void *param_1) { /* was s32: truncated the code address under PIE */
   vtxallocator = param_1;
 }
 

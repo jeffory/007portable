@@ -144,7 +144,7 @@ struct FlyingParticles {
 };
 
 extern f32 g_SpExplosionDamageMult;
-extern Mtx dword_CODE_bss_8007A100;
+extern Mtx *dword_CODE_bss_8007A100;
 extern struct Smoke *g_SmokeBuffer;
 extern struct Explosion *g_ExplosionBuffer;
 extern s32 max_particles;
