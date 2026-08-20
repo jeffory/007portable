@@ -1,0 +1,65 @@
+name: port
+
+on:
+  push:
+    paths:
+      - 'src/**'
+      - 'include/**'
+      - 'assets/**'
+      - 'port/**'
+      - 'scripts/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/port.yml'
+  pull_request:
+
+# ROM-gated tests (port/tests/run_goldens.sh) run locally before push; CI
+# proves the build matrix compiles and links warning-clean, and that the
+# generated sources are in sync with their generators.
+
+jobs:
+  build-i686:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 32-bit toolchain + SDL2
+        run: |
+          sudo dpkg --add-architecture i386
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc g++ gcc-multilib g++-multilib \
+            libsdl2-dev:i386 libgl1-mesa-dev:i386 || \
+          sudo apt-get install -y cmake ninja-build gcc g++ gcc-multilib g++-multilib
+
+      - name: Check generated sources are current
+        run: |
+          cp port/include/rom_offsets.h /tmp/rom_offsets.committed
+          python3 port/tools/gen_rom_symbols.py
+          diff -u /tmp/rom_offsets.committed port/include/rom_offsets.h
+
+      - name: Configure
+        run: cmake -B build -G Ninja --toolchain port/cmake/i686-toolchain.cmake
+
+      - name: Build
+        run: ninja -C build | tee /tmp/build.log
+
+      - name: Warning gate
+        run: |
+          # enum-signedness detector: 5 known always-true-on-IDO-too sites
+          # in textrelated.c (see CMakeLists) — the count must not grow
+          n=$(grep -c "Wtype-limits" /tmp/build.log || true)
+          echo "type-limits warnings: $n (limit 5)"
+          test "$n" -le 5
+
+  build-x86-64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain + SDL2
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc g++ libsdl2-dev libgl1-mesa-dev
+
+      - name: Configure
+        run: cmake -B build -G Ninja
+
+      - name: Build
+        run: ninja -C build

@@ -602,11 +602,6 @@ s16 *g_sndSfxSlotVolume;
  */
 u16 *g_sndSfxSlotNaturalVolume;
 
-extern u32 _sfxtblSegmentRomStart;
-extern u32 _sfxctlSegmentRomStart;
-extern u32 _instrumentstblSegmentRomStart;
-extern u32 _instrumentsctlSegmentRomStart;
-extern u32 _musicsampletblSegmentRomStart;
 
 /**
  * 75F0	700069F0

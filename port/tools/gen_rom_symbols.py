@@ -27,7 +27,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 CSV_PATH = os.path.join(ROOT, "scripts", "filelist.u.csv")
 IMAGELIST_PATH = os.path.join(ROOT, "imagelist.u.csv")
 OBSEG_S = os.path.join(ROOT, "assets", "obseg", "ob_seg.s")
-OUT_PATH = os.path.join(ROOT, "port", "src", "rom_symbols.ld")
+OUT_PATH = os.path.join(ROOT, "port", "include", "rom_offsets.h")
 
 
 def load_filelist():
@@ -403,8 +403,34 @@ def main():
     except OSError:
         missing.append(("_imagesSegmentRomStart", IMAGELIST_PATH))
 
+    # Emit as a macro header instead of a linker script: each PROVIDE line
+    # becomes `#define sym PORT_ROM_ABS(off)`. The macro is an array lvalue
+    # at the offset, so bare `sym` decays to (u8 *)off and `&sym` casts to
+    # off — the exact values the old absolute linker symbols resolved to,
+    # but as pure compile-time constants: PIE-safe, linker-agnostic
+    # (lld/NDK/MSVC), and constant-foldable. Force-included into every game
+    # TU by CMake; the extern declarations were deleted.
+    import re as _re
+    hdr = [
+        "#ifndef PORT_ROM_OFFSETS_H",
+        "#define PORT_ROM_OFFSETS_H",
+        "#include <stdint.h>",
+        "#define PORT_ROM_ABS(off) (*(unsigned char (*)[1])(uintptr_t)(off))",
+        "",
+    ]
+    body = []
+    seen = set()
+    for line in out:
+        m = _re.match(r"PROVIDE\((\w+) = (0x[0-9A-Fa-f]+|0)\);(.*)", line)
+        if m:
+            if m.group(1) in seen:
+                continue  # later passes re-derive some symbols (same value)
+            seen.add(m.group(1))
+            body.append("#define %s PORT_ROM_ABS(%s)%s" % (m.group(1), m.group(2), m.group(3)))
+        else:
+            body.append(line)
     with open(OUT_PATH, "w") as f:
-        f.write("\n".join(out) + "\n")
+        f.write("\n".join(hdr + body) + "\n#endif /* PORT_ROM_OFFSETS_H */\n")
 
     print("wrote %s: %d symbols" % (os.path.relpath(OUT_PATH, ROOT), count))
     if missing:

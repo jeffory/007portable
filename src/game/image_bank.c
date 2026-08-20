@@ -83,7 +83,6 @@ struct sImageTableEntry *mpcharselimages;
 struct sImageTableEntry *mpstageselimages;
 
 
-extern u8* _GlobalimagetableSegmentRomStart;
 
 
 void texSetBitstring(s32 pos) {
@@ -112,58 +111,7 @@ u32 texReadBits(s32 bitCount)
 
 
 
-extern u32* _GlobalimagetableSegmentStart;
-extern u32* _GlobalimagetableSegmentEnd;
-extern void* s_genericimage;
-extern void* s_impactimages;
-extern void* s_explosion_smokeimages;
-extern void* s_scattered_explosions;
-extern void* s_flareimage1;
-extern void* s_flareimage2;
-extern void* s_flareimage3;
-extern void* s_flareimage4;
-extern void* s_flareimage5;
-extern void* s_ammo9mmimage;
-extern void* s_rifleammoimage;
-extern void* s_shotgunammoimage;
-extern void* s_knifeammoimage;
-extern void* s_glammoimage;
-extern void* s_rocketammoimage;
-extern void* s_genericmineammoimage;
-extern void* s_grenadeammoimage;
-extern void* s_magnumammoimage;
-extern void* s_goldengunammoimage;
-extern void* s_remotemineammoimage;
-extern void* s_timedmineammoimage;
-extern void* s_proxmineammoimage;
-extern void* s_tankammoimage;
-extern void* s_crosshairimage;
-extern void* s_betacrosshairimage;
-extern void* s_glassoverlayimage;
-extern void* s_monitorimages;
-extern void* s_skywaterimages;
-extern void* s_mainfolderimages;
-extern void* s_mpradarimages;
-extern void* s_mpcharselimages;
-extern void* s_mpstageselimages;
 
-extern Gfx* globalDL_0x000;
-extern Gfx* globalDL_0x078;
-extern Gfx* globalDL_0x120;
-extern Gfx* globalDL_0x1c8;
-extern Gfx* globalDL_0x270;
-extern Gfx* globalDL_0x318;
-extern Gfx* globalDL_0x3c0;
-extern Gfx* globalDL_0x468;
-extern Gfx* globalDL_0x510;
-extern Gfx* globalDL_0x5b8;
-extern Gfx* globalDL_0x660;
-extern Gfx* globalDL_0x708;
-extern Gfx* globalDL_0x7b0;
-extern Gfx* globalDL_0x858;
-extern Gfx* globalDL_0x900;
-extern Gfx* globalDL_0x9a8;
-extern Gfx* globalDL_0xa50;
 
 void texReset(void)
 {

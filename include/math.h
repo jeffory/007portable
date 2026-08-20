@@ -86,10 +86,16 @@
 
 /* Macro Versions of functions */
 
+#ifndef ABS /* gbi.h defines equivalent MIN/MAX/ABS */
 #define ABS(x)    ((x) < 0 ? -(x) : (x))          /* absolute value of x */
+#endif
 #define SGN(x)    ((x) < 0 ? -1 : (x) > 0 ? 1 : 0)/* sign of x */
+#ifndef MIN
 #define MIN(x, y) ((x) < (y) ? (x) : (y))         /* minimum of x and y */
+#endif
+#ifndef MAX
 #define MAX(x, y) ((x) > (y) ? (x) : (y))         /* maximum of x and y */
+#endif
 #define SQR(x)    ((x) * (x))                     /* square of x */
 
 /**

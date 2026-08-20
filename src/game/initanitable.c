@@ -220,7 +220,6 @@ struct ModelAnimation *animation_table_ptrs2[] = {
 };
 
 
-extern u32 _animation_entriesSegmentRomStart[];
 
 struct anim_entry
 {

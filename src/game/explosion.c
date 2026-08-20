@@ -1460,7 +1460,6 @@ u8 explosionChrpropSmokeTick(PropRecord* prop)
 }
 
 
-extern Gfx globalDL_0x000;
 
 /***
  * NTSC address 0x7F09F03C.
@@ -1703,7 +1702,6 @@ void explosionUpdateFlyingParticles(void)
 }
 
 
-extern Gfx globalDL_0xa50;
 
 /***
  * NTSC address 0x7F0A0034.

@@ -4848,7 +4848,9 @@ typedef enum PROJECTILES
 #define ARRAYCOUNT(a) (s32)(sizeof(a) / sizeof(a[0]))
 #define ALIGN8(val)         (((val) + 0x7 | 0x7) ^ 0x7)
 #define RANDOMFRAC() ((f32) randomGetNext() * 2.3283064e-10f)
+#ifndef MAXFLOAT /* the host math.h defines the same value */
 #define MAXFLOAT ((float)3.40282346638528860e+38)
+#endif
 #define SQ(x) ((x) * (x))
 
 #define HUDHALIGN_RIGHT  0

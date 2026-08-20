@@ -2391,7 +2391,6 @@ void texLoadFromDisplayList(Gfx *gdl, struct texpool *arg1)
 }
 
 
-extern u8 _imagesSegmentRomStart;
 
 /**
  * Load and decompress a texture from ROM.
