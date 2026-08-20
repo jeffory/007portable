@@ -47,7 +47,9 @@ static u8 sMusicHuftBuf[DOUBLE_SIZE_ON_64_BIT(0x2100)];
  * Bytes allocated by call to mempAllocBytesInBank. This sets up a local heap,
  * the rest of the memory allocations in this file come from this heap.
  */
-#define MUSIC_ALLOCATION_BYTES   0x2E000
+/* native AL structs (players, voices, fx, promoted banks' leaves stay in
+ * the blob) are pointer-widened on 64-bit; give the heap headroom */
+#define MUSIC_ALLOCATION_BYTES   DOUBLE_SIZE_ON_64_BIT(0x2E000)
 #define MUSIC_MEMP_BANK                6
 
 /**
@@ -672,7 +674,7 @@ void musicSeqPlayerInit(void)
         sfxBank = alHeapAlloc(&g_musicHeap, 1, size);
         romCopy(sfxBank, &_sfxctlSegmentRomStart, size);
         portSwapBankFile(sfxBank, size, (u32)&_sfxtblSegmentRomStart); /* PORT_PREPROCESS */
-        alBnkfNew(sfxBank, (u8 *)&_sfxtblSegmentRomStart);
+        sfxBank = portBnkfPromote(sfxBank, size, (u8 *)&_sfxtblSegmentRomStart);
         g_musicSfxBufferPtr = sfxBank->bankArray[0];
     }
 
@@ -683,7 +685,7 @@ void musicSeqPlayerInit(void)
         instrumentBank = alHeapAlloc(&g_musicHeap, 1, size);
         romCopy(instrumentBank, &_instrumentsctlSegmentRomStart, size);
         portSwapBankFile(instrumentBank, size, (u32)&_instrumentstblSegmentRomStart); /* PORT_PREPROCESS */
-        alBnkfNew(instrumentBank, (u8 *)&_instrumentstblSegmentRomStart);
+        instrumentBank = portBnkfPromote(instrumentBank, size, (u8 *)&_instrumentstblSegmentRomStart);
         g_musicInstrumentBufferPtr = instrumentBank->bankArray[0];
     }
 
@@ -701,6 +703,7 @@ void musicSeqPlayerInit(void)
     romCopy(g_musicDataTable, (void *)tblSegmentRomStartAddress, ALIGN16_a(tblSegmentSize));
 
     portSwapRareSeqTable(g_musicDataTable); /* PORT_PREPROCESS */
+    g_musicDataTable = portSeqTablePromote(g_musicDataTable);
 
     // end auReadSeqFileHeader
 
@@ -770,14 +773,14 @@ void musicSeqPlayerInit(void)
     g_musicXTrack2SeqPlayer = alHeapAlloc(&g_musicHeap, 1, size);
     g_musicXTrack3SeqPlayer = alHeapAlloc(&g_musicHeap, 1, size);
 
-    // Typo / mistake, the following calls to alSeqpSetBank should actually
-    // be to alCSPSetBank.
+    /* was alSeqpSetBank((ALSeqPlayer *)...) — Rare's typo; harmless on
+     * 32-bit (coinciding evtq offsets), struct-scrambling on 64-bit */
     alCSPNew(g_musicXTrack1SeqPlayer, &track1SeqpConfig);
-    alSeqpSetBank((ALSeqPlayer *)g_musicXTrack1SeqPlayer, g_musicInstrumentBufferPtr);
+    alCSPSetBank(g_musicXTrack1SeqPlayer, g_musicInstrumentBufferPtr);
     alCSPNew(g_musicXTrack2SeqPlayer, &track2SeqpConfig);
-    alSeqpSetBank((ALSeqPlayer *)g_musicXTrack2SeqPlayer, g_musicInstrumentBufferPtr);
+    alCSPSetBank(g_musicXTrack2SeqPlayer, g_musicInstrumentBufferPtr);
     alCSPNew(g_musicXTrack3SeqPlayer, &track3SeqpConfig);
-    alSeqpSetBank((ALSeqPlayer *)g_musicXTrack3SeqPlayer, g_musicInstrumentBufferPtr);
+    alCSPSetBank(g_musicXTrack3SeqPlayer, g_musicInstrumentBufferPtr);
 
     sfxSeqpConfig.maxEvents = MUSIC_SFX_SEQ_CONFIG_MAX_EVENTS;
     sfxSeqpConfig.maybeSndStateCount = MUSIC_SFX_SEQ_CONFIG_MAYBE_SND_STATE_COUNT;

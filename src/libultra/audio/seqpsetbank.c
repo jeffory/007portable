@@ -30,3 +30,18 @@ void alSeqpSetBank(ALSeqPlayer *seqp, ALBank *b)
     alEvtqPostEvent(&seqp->evtq, &evt, 0);
 }
 
+
+/* Declared in libaudio.h but missing from the decomp: the compressed-midi
+ * player's own SetBank. music.c used alSeqpSetBank with a cast — the evtq
+ * offsets of ALSeqPlayer/ALCSPlayer coincided on 32-bit, but diverge with
+ * native pointers (the event landed on the CSP's player node instead,
+ * overwriting node.next with the bank pointer). */
+void alCSPSetBank(ALCSPlayer *seqp, ALBank *b)
+{
+    ALEvent evt;
+
+    evt.type = AL_SEQP_BANK_EVT;
+    evt.msg.spbank.bank = b;
+
+    alEvtqPostEvent(&seqp->evtq, &evt, 0);
+}

@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <platform_info.h>
 #include <deb.h>
 #include "memp.h"
 #include "game/language.h"
@@ -63,7 +64,9 @@ void mempCheckMemflagTokens(s32 poolAreaStart, s32 poolAreaSize)
     if (poolSizes.me == 0)
     {
         poolSizes.mf = 0;
-        poolSizes.me = ((j_text_trigger ? 308 : 296) * 1024);
+        /* 64-bit: native-width audio/AL structs (and the doubled music
+         * heap) need permanent-pool headroom; ml absorbs the difference */
+        poolSizes.me = ((j_text_trigger ? 308 : 296) * 1024) * (IS_64_BIT ? 2 : 1);
         poolSizes.ml = poolAreaSize - poolSizes.me;
     }
 

@@ -104,6 +104,10 @@ s32  portPropdefWords64(u8 type);    /* native propdef stride, 0 = unknown type 
 
 /* audio (preprocess_audio.c, audio.c) */
 void portSwapBankFile(void *data, u32 size, u32 tblRomBase);
+struct ALBankFile_s; /* promote a swapped ctl bank: alBnkfNew on 32-bit,
+                        native container rebuild on 64-bit */
+void *portBnkfPromote(void *blob, u32 size, u8 *tbl);
+void *portSeqTablePromote(void *blob); /* Rare seq table: native records on 64-bit */
 void portSwapRareSeqHeader(void *data);
 void portSwapRareSeqTable(void *data);
 void portSwapCMidiHdr(void *data);

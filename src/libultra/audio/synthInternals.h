@@ -134,6 +134,17 @@ typedef struct {
     struct PVoice_s     *pvoice;
 } ALFreeParam;
 
+/* Pool-node sizing: __allocParam() hands out fixed-size nodes that every
+ * AL*Param variant is written through. The variants all happened to be 28
+ * bytes on 32-bit; with native pointers ALStartParamAlt (trailing wave
+ * pointer) outgrows ALParam, so nodes must be sized by the largest. */
+typedef union {
+    ALParam         param;
+    ALStartParamAlt startAlt;
+    ALStartParam    start;
+    ALFreeParam     free_;
+} ALParamNode;
+
 typedef Acmd *(*ALCmdHandler)(void *, s16 *, s32, s32, Acmd *);
 typedef s32   (*ALSetParam)(void *, s32, void *);
 

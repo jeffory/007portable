@@ -124,10 +124,13 @@ void alSynNew(ALSynth *drvr, ALSynConfig *c)
     /*
      * build the parameter update list
      */
-    params = alHeapAlloc(hp, c->maxUpdates, sizeof(ALParam));
+    /* nodes sized for the largest variant (ALParamNode): sizeof(ALParam)
+     * was only sufficient on 32-bit, where all variants coincided at 28
+     * bytes — natively ALStartParamAlt's wave pointer overhangs it */
+    params = (ALParam *)alHeapAlloc(hp, c->maxUpdates, sizeof(ALParamNode));
     drvr->paramList = 0;
     for (i = 0; i < c->maxUpdates; i++) {
-        paramPtr= &params[i];
+        paramPtr = (ALParam *)((u8 *)params + (u32)i * sizeof(ALParamNode));
         paramPtr->next = drvr->paramList;
         drvr->paramList = paramPtr;
     }

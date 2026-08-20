@@ -183,11 +183,12 @@ int main(int argc, char **argv)
     applyStageOverride();
 
 #if IS_64_BIT
-    /* M6 PORT_TODO: the libultra audio path still promotes 32-bit offsets
-     * inside ALBankFile/seq blobs through native-width structs (alBnkfNew
-     * & friends), which is not yet 64-bit clean. Use Rare's own boot
-     * switch to disable sound unless the user opts in to debug it. */
-    if (getenv("PORT_64_AUDIO") == NULL) {
+    /* Audio is 64-bit clean since the native bank/seq-table promotion
+     * (portBnkfPromote/portSeqTablePromote in preprocess_audio.c);
+     * PORT_64_AUDIO=0 keeps Rare's boot switch as an escape hatch. */
+    {
+        const char *env = getenv("PORT_64_AUDIO");
+        if (env != NULL && env[0] == '0') {
         extern s8 g_sndBootswitchSound;
         extern s16 *g_sndSfxSlotVolume;
         extern s16 *g_sndSfxSlotNaturalVolume;
@@ -203,7 +204,8 @@ int main(int argc, char **argv)
         }
         g_sndSfxSlotVolume = sDummySlotVolume;
         g_sndSfxSlotNaturalVolume = sDummySlotNaturalVolume;
-        fprintf(stderr, "port: 64-bit build: audio disabled (set PORT_64_AUDIO=1 to attempt)\n");
+        fprintf(stderr, "port: 64-bit build: audio disabled (PORT_64_AUDIO=0)\n");
+        }
     }
 #endif
 
