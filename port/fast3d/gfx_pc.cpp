@@ -673,11 +673,11 @@ static void import_texture_rgba32(int tile, const LoadedTexture& loaded_texture,
     const uint32_t line_size_bytes = loaded_texture.line_size_bytes;
     SUPPORT_CHECK(full_image_line_size_bytes == line_size_bytes);
 
-    uint32_t *dest = (uint32_t *)tex_upload_buffer;
-    const uint32_t *src = (const uint32_t *)addr;
-    for (uint32_t i = 0; i < size_bytes; i += 4, ++dest, ++src) {
-        *dest = PD_BE32(*src);
-    }
+    /* N64 RGBA32 texel bytes are already R,G,B,A in memory (the game-side
+     * decoders emit big-endian byte order — see texInflateNonZlib), so a
+     * straight byte copy is correct; a PD_BE32 word swap here would upload
+     * A,B,G,R (gold ammo icons turned pink, white gun shine turned blue). */
+    memcpy(tex_upload_buffer, addr, size_bytes);
 
     if (rdp.texture_tile[tile].line_size_bytes == 0) {
         return; /* degenerate tile: avoid divide-by-zero */
