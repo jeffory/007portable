@@ -913,6 +913,36 @@ static void import_texture_ci8(int tile, const LoadedTexture& loaded_texture, bo
                 rs / size_bytes, gs / size_bytes, bs / size_bytes);
     }
 
+    {
+        /* PORT_DUMP_CI8=<dir>: dump each imported CI8 texture as PPM + palette */
+        static const char *dumpdir = (getenv("PORT_DUMP_CI8"));
+        if (dumpdir != NULL) {
+            char path[512];
+            uint32_t w = rdp.texture_tile[tile].line_size_bytes;
+            if (w == 0) w = 1;
+            uint32_t h = size_bytes / w;
+            snprintf(path, sizeof(path), "%s/ci8_%p_tex%u_%ux%u.ppm", dumpdir, (const void *)addr,
+                     *(const uint16_t *)(addr - 8), w, h);
+            FILE *f = fopen(path, "wb");
+            if (f) {
+                fprintf(f, "P6\n%u %u\n255\n", w, h);
+                for (uint32_t i = 0; i < size_bytes; i++) {
+                    fwrite(tex_upload_buffer + 4 * i, 1, 3, f);
+                }
+                fclose(f);
+            }
+            snprintf(path, sizeof(path), "%s/ci8_%p_tex%u.pal.txt", dumpdir, (const void *)addr,
+                     *(const uint16_t *)(addr - 8));
+            f = fopen(path, "w");
+            if (f) {
+                for (int i = 0; i < 256; i++) {
+                    fprintf(f, "%04x%c", rdp.palette[i], (i % 16 == 15) ? '\n' : ' ');
+                }
+                fclose(f);
+            }
+        }
+    }
+
     uint32_t result_line_size = rdp.texture_tile[tile].line_size_bytes;
     if (metadata->h_byte_scale != 1) {
         result_line_size *= metadata->h_byte_scale;
@@ -1329,12 +1359,20 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx* verti
 
         if (rsp.geometry_mode & G_FOG) {
             /* RSP-accurate behavior: with G_FOG the RSP overwrites vertex
-             * shade alpha with the fog factor; GE's first-person gun
-             * combiner ("GunLighting": lerp(ENV, TEXEL0, SHADE_ALPHA)*SHADE)
-             * relies on this. Behind PORT_RSP_FOG_ALPHA=1 until GE's
-             * per-pass fog conventions are fully mapped: enabling it renders
-             * the gun subdued as intended but currently washes the world in
-             * fog color, so a piece of the puzzle is still missing. */
+             * shade alpha with the fog factor. GE's per-pass mapping (from a
+             * Dam trace): only BG room geometry runs with G_FOG on
+             * (G_RM_FOG_SHADE_A cyc1, gSPFogPosition(995,1000) so the factor
+             * is 0 until ~the last 1% of clip depth); props and the
+             * first-person gun are drawn with G_FOG CLEARED and fog via
+             * G_RM_FOG_PRIM_A (constant fog-color alpha, CPU-computed), so
+             * shade alpha overwrite never applies to them. The BG combiner's
+             * alpha cycle is (COMBINED*SHADE); on hardware that fog-alpha
+             * output only feeds the blender through ALPHA_CVG_SEL, which
+             * replaces it with coverage - net effect nil. fast3d, however,
+             * feeds CC alpha into GL blending for those B2=1MA passes, so
+             * enabling the overwrite washes the world out. Until fast3d
+             * models ALPHA_CVG_SEL, keep vertex alpha here (matches PD port).
+             * PORT_RSP_FOG_ALPHA=1 remains as an experiment switch. */
             static int rspFogAlpha = -1;
             if (rspFogAlpha < 0) {
                 const char *e = getenv("PORT_RSP_FOG_ALPHA");
@@ -1366,16 +1404,31 @@ static inline int gfx_lod_tile_offset(const int i) {
 
 static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bool is_rect) {
     gfx_dbg_tris_in++;
+    {
+        /* PORT_SKIP_CC=<hex64>: debug — drop tris using this combine mode */
+        static int have_skip = -1;
+        static uint64_t skip_cc;
+        if (have_skip < 0) {
+            const char *e = getenv("PORT_SKIP_CC");
+            have_skip = e != NULL;
+            if (have_skip) skip_cc = strtoull(e, NULL, 16);
+        }
+        if (have_skip && rdp.combine_mode == skip_cc) {
+            return;
+        }
+    }
     struct LoadedVertex* v1 = &rsp.loaded_vertices[vtx1_idx];
     if (gfx_dbg_tridump > 0 && !is_rect) {
         gfx_dbg_tridump--;
-        fprintf(stderr, "port/tri: geo=%08x cc=%08x-%08x om=%08x:%08x env=%02x%02x%02x%02x prim=%02x%02x%02x%02x vcol=%02x%02x%02x%02x lights=%d lcol=%02x%02x%02x\n",
+        fprintf(stderr, "port/tri: geo=%08x cc=%08x-%08x om=%08x:%08x env=%02x%02x%02x%02x prim=%02x%02x%02x%02x vcol=%02x%02x%02x%02x fogc=%02x%02x%02x%02x vfog=%u fogp=%d,%d lights=%d lcol=%02x%02x%02x\n",
                 rsp.geometry_mode,
                 (unsigned)(rdp.combine_mode >> 32), (unsigned)rdp.combine_mode,
                 rdp.other_mode_h, rdp.other_mode_l,
                 rdp.env_color.r, rdp.env_color.g, rdp.env_color.b, rdp.env_color.a,
                 rdp.prim_color.r, rdp.prim_color.g, rdp.prim_color.b, rdp.prim_color.a,
                 v1->color.r, v1->color.g, v1->color.b, v1->color.a,
+                rdp.fog_color.r, rdp.fog_color.g, rdp.fog_color.b, rdp.fog_color.a,
+                v1->fog, rsp.fog_mul, rsp.fog_offset,
                 rsp.current_num_lights,
                 rsp.current_lights[rsp.current_num_lights - 1].col[0],
                 rsp.current_lights[rsp.current_num_lights - 1].col[1],
@@ -1763,7 +1816,15 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
                         break;
                     }
                     case G_CCMUX_LOD_FRACTION: {
-                        if (rdp.other_mode_h & G_TL_LOD) {
+                        /* PORT_LODFRAC=<0..255>: debug override for LOD_FRACTION */
+                        static int lodfrac_dbg = -2;
+                        if (lodfrac_dbg == -2) {
+                            const char *e = getenv("PORT_LODFRAC");
+                            lodfrac_dbg = e != NULL ? atoi(e) : -1;
+                        }
+                        if (lodfrac_dbg >= 0) {
+                            tmp.r = tmp.g = tmp.b = tmp.a = (uint8_t)lodfrac_dbg;
+                        } else if (rdp.other_mode_h & G_TL_LOD) {
                             // HACK: very roughly eyeballed based on the carpets in Defection
                             // this is actually supposed to be calculated per pixel
                             const float distance_frac = std::max(0.f, std::min(w / 1024.f, 1.f));

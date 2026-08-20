@@ -366,7 +366,18 @@ s32 texAlignIndices(u8 *src, s32 width, s32 height, s32 format, u8 *dst)
             src++;
         }
 
+#ifdef TARGET_N64
         outptr = (u8 *)(((u32)outptr + 7) & ~7);
+#else
+        /* The N64 build aligns each row to an ABSOLUTE 8-byte address; that
+         * equals 8-byte row padding because pool image data is always
+         * 8-aligned there. On PC the pool entries land on 4-mod-8 addresses,
+         * so absolute alignment injected 4 stray bytes before row 1, shifting
+         * every following row AND the palette appended after the image by
+         * 4 bytes (2 TLUT entries) - the source of the blue/green
+         * first-person guns. Align relative to the row buffer instead. */
+        outptr = dst + (((uintptr_t)(outptr - dst) + 7) & ~(uintptr_t)7);
+#endif
     }
 
     return outptr - dst;
@@ -1699,9 +1710,18 @@ void texReadAlphaBits(u8 *image,s32 count)
  */
 s32 texReadUncompressed(u8 *dst, s32 width, s32 height, s32 format)
 {
+#ifdef TARGET_N64
 	u32 *dst32 = (u32 *)(((u32)dst + 0xf) & ~0xf);
 	u16 *dst16 = (u16 *)(((u32)dst + 7) & ~7);
 	u8 *dst8 = (u8 *)(((u32)dst + 7) & ~7);
+#else
+	/* See texAlignIndices: absolute-address alignment assumes the pool
+	 * write cursor is already aligned (true on N64, not on PC). Write at
+	 * dst directly so the data starts where readers expect it. */
+	u32 *dst32 = (u32 *)dst;
+	u16 *dst16 = (u16 *)dst;
+	u8 *dst8 = (u8 *)dst;
+#endif
 	s32 x;
 	s32 y;
 
