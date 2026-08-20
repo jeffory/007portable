@@ -39,9 +39,13 @@ bad()  { echo "!! $*"; FAIL=1; }
 [ -f data/ge007.u.z64 ] || { echo "no ROM at data/ge007.u.z64"; exit 2; }
 
 if [ -z "${DISPLAY:-}" ]; then
-    Xvfb :98 -screen 0 1280x1024x24 &>/dev/null &
+    # unique display per invocation: back-to-back runs (e.g. capture of two
+    # golden sets) race on a fixed :98 — the second Xvfb loses the lock and
+    # every game run silently fails
+    XVFB_D=$((90 + $$ % 60))
+    Xvfb ":$XVFB_D" -screen 0 1280x1024x24 &>/dev/null &
     XVFB_PID=$!
-    export DISPLAY=:98
+    export DISPLAY=":$XVFB_D"
     sleep 1
 fi
 export LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=x11

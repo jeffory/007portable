@@ -24,6 +24,7 @@
 #include <PR/gbi.h>
 #include <gbi_extension.h> /* GE: Rare G_TRI4 etc. live here, not in gbi.h */
 #include "gbi_ext_modern.h" /* modern-port EXT opcodes (from the PD port) */
+#include <skypool.h>        /* GE: raw sky/water triangle pool (G_TRIRAW_EXT) */
 
 #include "platform.h"
 
@@ -2865,6 +2866,53 @@ static void gfx_run_dl(Gfx* cmd) {
                 // by issuing low-level ucode commands G_TRI_FILL and G_TRI_SHADE_TXTR
                 // the port renders the sky in a different manner
                 break;
+            case G_TRIRAW_EXT: {
+                // GE sky/water: a screen-space triangle sky.c parked in
+                // g_PortSkyTriPool instead of packing RDP coefficients.
+                // Same recipe as texture rectangles: synthesize projected
+                // vertices, bypass the game viewport, draw. x/y arrive in
+                // quarter-pixel units, u/v in s10.5 tile coords, and w
+                // carries the perspective weight the RDP's S/W,T/W planes
+                // would have encoded (positions are pre-projected, so w
+                // only shapes interpolation).
+                const struct PortSkyVtx* t = g_PortSkyTriPool[cmd->words.w1 % PORT_SKY_TRI_POOL];
+                struct XYWidthHeight default_viewport = { 0, (int16_t)SCREEN_HEIGHT, (uint32_t)SCREEN_WIDTH,
+                                                          (uint32_t)SCREEN_HEIGHT };
+                struct XYWidthHeight viewport_saved = rdp.viewport;
+                uint32_t geometry_mode_saved = rsp.geometry_mode;
+
+                gfx_adjust_viewport_or_scissor(&default_viewport);
+                rdp.viewport = default_viewport;
+                rdp.viewport_or_scissor_changed = true;
+                rsp.geometry_mode = 0;
+
+                for (int i = 0; i < 3; i++) {
+                    struct LoadedVertex* d = &rsp.loaded_vertices[MAX_VERTICES + i];
+                    float xf = t[i].x / (4.0f * HALF_SCREEN_WIDTH) - 1.0f;
+                    float yf = -(t[i].y / (4.0f * HALF_SCREEN_HEIGHT)) + 1.0f;
+                    float w = t[i].w > 0.0f ? t[i].w : 1.0f;
+
+                    xf = gfx_adjust_x_for_aspect_ratio(xf);
+                    d->x = xf * w;
+                    d->y = yf * w;
+                    d->z = 0.0f;
+                    d->w = w;
+                    d->u = t[i].u;
+                    d->v = t[i].v;
+                    d->color.r = t[i].r;
+                    d->color.g = t[i].g;
+                    d->color.b = t[i].b;
+                    d->color.a = t[i].a;
+                    d->fog = 0;
+                    d->clip_rej = 0;
+                }
+                gfx_sp_tri1(MAX_VERTICES + 0, MAX_VERTICES + 1, MAX_VERTICES + 2, true);
+
+                rsp.geometry_mode = geometry_mode_saved;
+                rdp.viewport = viewport_saved;
+                rdp.viewport_or_scissor_changed = true;
+                break;
+            }
             case G_RDPFLUSH_EXT:
                 gfx_flush();
                 break;

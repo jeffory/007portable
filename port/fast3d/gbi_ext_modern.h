@@ -23,6 +23,7 @@
 #define G_RDPFLUSH_EXT               0x43
 #define G_CLEAR_DEPTH_EXT            0x44
 #define G_SETSUBPIXELOFFSET_EXT      0x45
+#define G_TRIRAW_EXT                 0x46 /* GE sky/water: screen-space tri from g_PortSkyTriPool[w1] */
 
 /* G_EXTRAGEOMETRYMODE flags */
 
