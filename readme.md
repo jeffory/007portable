@@ -1,32 +1,62 @@
-# Goldeneye 007
+# GoldenEye 007 — portable PC port
 
-[![NTSC-Status][NTCS-badge]][NTCS-link]
-[![JP-Status][JP-badge]][JP-link]
-[![PAL-Status][PAL-badge]][PAL-link]
+A native PC port of the GoldenEye 007 decompilation, built for **portability
+first**. This is not an attempt at the "ultimate" feature-rich PC port — the
+goal is one clean, device-agnostic codebase that runs the game faithfully on
+as many targets as possible: Linux (x86-64 and aarch64), RG35xxSP-class
+handhelds via PortMaster, Android, and Windows. Enhancements (widescreen,
+>60 fps interpolation, etc.) come last, and only where they don't compromise
+that goal.
 
-[NTCS-link]: https://kholdfuzion.github.io/goldeneyestatus/
-[NTCS-badge]: ../../workflows/NTSC-Status/badge.svg
+The approach follows the [Perfect Dark PC port](https://github.com/fgsfdsfgs/perfect_dark):
+the original game logic compiles as-is, the N64 plumbing (threads, TLB pager,
+VI/PI, scheduler, RSP) is replaced by a small platform layer in [`port/`](./port/),
+rendering goes through the fast3d renderer, and audio through a software
+implementation of the RSP audio microcode.
 
-[JP-link]: https://kholdfuzion.github.io/goldeneyestatus/JPN.htm
-[JP-badge]: ../../workflows/JP-Status/badge.svg
+**This repository ships no game assets.** A GoldenEye 007 (U) ROM is required
+at runtime; it is verified by SHA-1 before loading.
 
-[PAL-link]: https://kholdfuzion.github.io/goldeneyestatus/EU.htm
-[PAL-badge]: ../../workflows/EU-Status/badge.svg
+## Status
 
-## About this repository
+The game is playable end to end on Linux: full intro, menus, missions with
+AI, audio, saves, mouse/keyboard and gamepad input. Current work follows the
+portability roadmap:
 
-This is a WIP decompilation of Goldeneye 007!
+| Phase | Scope | Status |
+|---|---|---|
+| 0 | Golden regression suite (preprocess CRCs, reference frames, PCM check) | done |
+| 1 | Remove all N64-only code, default `-O2`, UBSan-clean | done |
+| 2 | Full regression net + CI matrix (deterministic replay, x86-64 / aarch64 / NDK) | in progress |
+| 3 | Native 64-bit memory model — PIE-safe, no low-4GB tricks; unlocks ARM/Android | next |
+| 4 | GLES2/3 renderer path, audio thread, portable file paths, asset cache | planned |
+| 5 | Packaging: AppImage, PortMaster zip, Android APK, Windows build | planned |
+| 6 | Profiling and enhancements | planned |
 
-It builds the following ROMs:
+## N64 support
 
-* ge007.u.z64 `sha1: abe01e4aeb033b6c0836819f549c791b26cfde83`
-* ge007.j.z64 `sha1: 2a5dade32f7fad6c73c659d2026994632c1b3174`
-* ge007.e.z64 `sha1: 167c3c433dec1f1eb921736f7d53fac8cb45ee31`
+This tree no longer builds N64 ROMs. The last byte-match-verified decomp
+build (IDO toolchain, `make`-based, matching all three regions) is preserved
+at the [`n64-final`](../../tree/n64-final) tag — the setup and structure
+guides in [`docs/`](./docs/) describe that build and are kept for reference.
+The [Style Guide](./docs/StyleGuide.md) still applies to game code.
 
-**Note: This repository does not include all assets necessary for compiling the ROMs. A prior copy of the game is required to extract the assets.**
+## Building
 
-## Documentation
+Requires CMake, Ninja, GCC, and SDL2 development headers.
 
-* [Setup Guide:](./docs/SetupGuide.md) useful information about installing the necessary dependencies and how to use it
-* [Structure Guide:](./docs/StructureGuide.md) learn more about the project structure of this repository
-* [Style Guide:](./docs/StyleGuide.md) code style conventions if you want to contribute code
+```sh
+# 32-bit build (currently the fully-featured one; needs multilib + 32-bit SDL2)
+cmake -B build-port -G Ninja --toolchain port/cmake/i686-toolchain.cmake
+ninja -C build-port
+
+# native x86-64 build (menus + world render; prop/audio expansion in progress)
+cmake -B build-64 -G Ninja
+ninja -C build-64
+```
+
+Place the ROM at `data/ge007.u.z64` and run `./build-port/ge007-port`.
+`--selftest` verifies the asset pipeline without opening a window.
+
+See [`port/README.md`](./port/README.md) for controls, configuration
+(`~/.config/ge007/input.ini`), and the debug environment variables.
