@@ -997,6 +997,7 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
     struct mdlctx ctx;
     u8 *node;
     s32 i;
+    u32 realSize = size;
 
     if (size == 0) {
         size = 0x100000; /* runaway guard only; real files are far smaller */
@@ -1054,6 +1055,10 @@ void portPreprocessModelFile(struct ModelFileHeader *header, void *filedata, u32
                 node = off2ptr(&ctx, parentOff);
             }
         }
+    }
+
+    if (realSize != 0) {
+        portCrcTrace("model", vma, filedata, realSize);
     }
 
     mdlRegisterFile(header, filedata);

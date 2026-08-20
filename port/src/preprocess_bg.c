@@ -162,6 +162,12 @@ void portSwapBgFile(void *data, u32 size)
         }
         swap32Run(base + offFlt, n);
     }
+
+#if !IS_64_BIT
+    /* golden CRC; 64-bit skips it (the portal relocation above writes an
+     * allocation-dependent craft offset into hdr[2]) */
+    portCrcTrace("bg", 0, data, size);
+#endif
 }
 
 /* Decompressed room vertex table: 16-byte Vtx, coords/flag/st are
@@ -241,6 +247,11 @@ void *portSwapStanFile(void *file)
     if (getenv("PORT_LOAD_TRACE") != NULL) {
         fprintf(stderr, "port: stan swapped, %d tiles\n", ntiles);
     }
+
+    /* golden CRC over the swapped 32-bit-layout file (tag word, slot array
+     * incl. NULL terminator, tiles, 8-byte tile terminator) — taken before
+     * the 64-bit native rebuild so both pointer models hash the same bytes */
+    portCrcTrace("stan", 0, file, (u32)(tile + 8 - (u8 *)file));
 
 #if IS_64_BIT
     /* The file is [tag][room OFFSET slots, 4 bytes each][0][tiles...], but

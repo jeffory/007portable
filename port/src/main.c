@@ -66,6 +66,20 @@ static int runSelftest(void)
         fprintf(stderr, "selftest: FAIL (expected crc 88ecb6f6)\n");
         return 1;
     }
+
+    /* golden CRCs of the 18 compiled-in AI arrays (byte-exact vs the retail
+     * ROM as of M3); emitted as CRCTRACE lines when PORT_CRC_TRACE is set,
+     * pinned by port/tests/goldens/. */
+    {
+        int i;
+        for (i = 0; i < g_PortAiArrayCount; i++) {
+            portCrcTrace("ai", (u32)i, g_PortAiArrays[i].data, g_PortAiArrays[i].len);
+            fprintf(stderr, "selftest: ai %-26s len=%-5u crc=%08x\n",
+                    g_PortAiArrays[i].name, g_PortAiArrays[i].len,
+                    portCrc32(g_PortAiArrays[i].data, g_PortAiArrays[i].len));
+        }
+    }
+
     fprintf(stderr, "selftest: PASS\n");
     return 0;
 }

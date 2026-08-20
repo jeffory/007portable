@@ -61,7 +61,7 @@ static void swapS32ListNeg1(u8 *base, u32 off)
     }
 }
 
-static void swapIntro(u8 *base, u32 off)
+static u32 *swapIntro(u8 *base, u32 off) /* returns one past the last swapped word */
 {
     u32 *w = (u32 *)(base + off);
 
@@ -80,10 +80,10 @@ static void swapIntro(u8 *base, u32 off)
         case INTROTYPE_CAMERA:  words = 10; break;
         case INTROTYPE_WATCH:   words = 3; break;
         case INTROTYPE_CREDITS: words = 2; break;
-        case INTROTYPE_END:     return;
+        case INTROTYPE_END:     return w + 1;
         default:
             fprintf(stderr, "port: setup intro: unknown type %d\n", type);
-            return;
+            return w + 1;
         }
         swapWords(w + 1, words - 1);
         w += words;
@@ -537,13 +537,22 @@ void *portSwapSetupFile(void *data)
     u32 *hdr = data;
     u32 off;
     u32 *w;
+    u8 *s0;
+    /* golden CRC accumulated over exactly the regions this pass swaps
+     * (the file's total extent is not recorded anywhere; each walk below
+     * discovers its own section's end) */
+    u32 xcrc = 0xFFFFFFFFu;
+    u32 xlen = 0;
+#define ACC(p, n) (xcrc = portCrc32Update(xcrc, (p), (u32)(n)), xlen += (u32)(n))
 
     swapWords(hdr, 10);
+    ACC(hdr, 40);
 
     /* waypoints: {s32 padID; off neighbours; s32 group; s32 dist} until padID < 0 */
     off = hdr[0];
     if (off != 0) {
-        w = (u32 *)(base + off);
+        s0 = base + off;
+        w = (u32 *)s0;
         for (;;) {
             swapWords(w, 4);
             if ((s32)w[0] < 0) {
@@ -554,12 +563,14 @@ void *portSwapSetupFile(void *data)
             }
             w += 4;
         }
+        ACC(s0, (u8 *)(w + 4) - s0);
     }
 
     /* waygroups: {off neighbours; off waypoints; s32 dist} until neighbours == 0 */
     off = hdr[1];
     if (off != 0) {
-        w = (u32 *)(base + off);
+        s0 = base + off;
+        w = (u32 *)s0;
         for (;;) {
             swapWords(w, 3);
             if (w[0] == 0) {
@@ -571,11 +582,13 @@ void *portSwapSetupFile(void *data)
             }
             w += 3;
         }
+        ACC(s0, (u8 *)(w + 3) - s0);
     }
 
     /* intro records */
     if (hdr[2] != 0) {
-        swapIntro(base, hdr[2]);
+        u32 *iend = swapIntro(base, hdr[2]);
+        ACC(base + hdr[2], (u8 *)iend - (base + hdr[2]));
 
         /* PORT_SPAWN_PAD=<n>: debug aid — retarget the spawn intro record's
          * pad so a stage can be entered at an arbitrary pad. */
@@ -612,13 +625,15 @@ void *portSwapSetupFile(void *data)
             pdef = (PropDefHeaderRecord *)((u32 *)pdef + words);
         }
         swapHalves(pdef, 1); /* terminator's extrascale, for completeness */
+        ACC(base + off, (u8 *)pdef + 4 - (base + off));
     }
 
     /* patrol paths: {off waypoints; u8 ID; u8 isLoop; u16 len} until off == 0.
      * len is computed at load time; ID/isLoop are bytes — only word 0 swaps. */
     off = hdr[4];
     if (off != 0) {
-        w = (u32 *)(base + off);
+        s0 = base + off;
+        w = (u32 *)s0;
         for (;;) {
             w[0] = swap32(w[0]);
             if (w[0] == 0) {
@@ -627,12 +642,14 @@ void *portSwapSetupFile(void *data)
             swapS32ListNeg1(base, w[0]);
             w += 2;
         }
+        ACC(s0, (u8 *)(w + 1) - s0);
     }
 
     /* ai lists: {off ailist; s32 ID} until ailist == 0; bytecode is u8s */
     off = hdr[5];
     if (off != 0) {
-        w = (u32 *)(base + off);
+        s0 = base + off;
+        w = (u32 *)s0;
         for (;;) {
             swapWords(w, 2);
             if (w[0] == 0) {
@@ -640,12 +657,14 @@ void *portSwapSetupFile(void *data)
             }
             w += 2;
         }
+        ACC(s0, (u8 *)(w + 2) - s0);
     }
 
     /* pads: {9 f32; off plink; ptr stan} until plink == 0 */
     off = hdr[6];
     if (off != 0) {
-        w = (u32 *)(base + off);
+        s0 = base + off;
+        w = (u32 *)s0;
         for (;;) {
             swapWords(w, 11);
             if (w[9] == 0) {
@@ -653,12 +672,14 @@ void *portSwapSetupFile(void *data)
             }
             w += 11;
         }
+        ACC(s0, (u8 *)(w + 11) - s0);
     }
 
     /* bound pads: pads + bbox (6 f32) */
     off = hdr[7];
     if (off != 0) {
-        w = (u32 *)(base + off);
+        s0 = base + off;
+        w = (u32 *)s0;
         for (;;) {
             swapWords(w, 17);
             if (w[9] == 0) {
@@ -666,23 +687,31 @@ void *portSwapSetupFile(void *data)
             }
             w += 17;
         }
+        ACC(s0, (u8 *)(w + 17) - s0);
     }
 
     /* pad name / bound pad name offset tables (strings stay as bytes) */
     if (hdr[8] != 0) {
-        w = (u32 *)(base + hdr[8]);
+        s0 = base + hdr[8];
+        w = (u32 *)s0;
         while (*w != 0) {
             *w = swap32(*w);
             w++;
         }
+        ACC(s0, (u8 *)(w + 1) - s0);
     }
     if (hdr[9] != 0) {
-        w = (u32 *)(base + hdr[9]);
+        s0 = base + hdr[9];
+        w = (u32 *)s0;
         while (*w != 0) {
             *w = swap32(*w);
             w++;
         }
+        ACC(s0, (u8 *)(w + 1) - s0);
     }
+
+    portCrcTraceValue("setup", 0, xlen, xcrc ^ 0xFFFFFFFFu);
+#undef ACC
 
     if (getenv("PORT_LOAD_TRACE") != NULL) {
         fprintf(stderr, "port: setup file swapped (base %p)\n", data);

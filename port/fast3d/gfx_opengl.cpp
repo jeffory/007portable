@@ -908,6 +908,39 @@ extern "C" void gfx_dbg_final_probe(void) {
     }
 }
 
+/* Phase-0 golden frames: dump the finished backbuffer as a binary PPM.
+ * Called from gfx_pc.cpp when PORT_FRAME_DUMP/_AT select a frame. */
+extern "C" void gfx_dbg_frame_dump(const char* path) {
+    GLint vp[4];
+    glGetIntegerv(GL_VIEWPORT, vp);
+    int w = vp[2], h = vp[3];
+    if (w <= 0 || h <= 0 || w > 8192 || h > 8192) {
+        fprintf(stderr, "port/framedump: bad viewport %dx%d\n", w, h);
+        return;
+    }
+    unsigned char* buf = (unsigned char*)malloc((size_t)w * h * 4);
+    if (buf == NULL) {
+        return;
+    }
+    glPixelStorei(GL_PACK_ALIGNMENT, 1);
+    glReadPixels(vp[0], vp[1], w, h, GL_RGBA, GL_UNSIGNED_BYTE, buf);
+    FILE* f = fopen(path, "wb");
+    if (f == NULL) {
+        fprintf(stderr, "port/framedump: cannot open %s\n", path);
+        free(buf);
+        return;
+    }
+    fprintf(f, "P6\n%d %d\n255\n", w, h);
+    for (int y = h - 1; y >= 0; y--) { /* GL rows are bottom-up */
+        for (int x = 0; x < w; x++) {
+            fwrite(buf + ((size_t)y * w + x) * 4, 1, 3, f);
+        }
+    }
+    fclose(f);
+    free(buf);
+    fprintf(stderr, "port/framedump: wrote %s (%dx%d)\n", path, w, h);
+}
+
 typedef void (APIENTRY *DEBUGPROC)(GLenum source,
     GLenum type,
     GLuint id,

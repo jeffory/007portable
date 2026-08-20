@@ -51,6 +51,21 @@ void portPlatformPoll(void);                 /* window/input events; may exit() 
 void portPlatformSleepMs(u32 ms);
 u64  portPlatformTimeNs(void);               /* monotonic */
 
+/* --- crctrace.c: golden CRC reporting (PORT_CRC_TRACE, phase 0) ------------ */
+u32  portCrc32(const void *data, u32 len);
+u32  portCrc32Update(u32 crc, const void *data, u32 len); /* seed 0xFFFFFFFF, xor-out yourself */
+void portCrcTrace(const char *tag, u32 key, const void *data, u32 len);
+void portCrcTraceValue(const char *tag, u32 key, u32 len, u32 crc);
+
+/* built-in AI script arrays (defined at the tail of src/game/chraidata.c) */
+struct PortAiArray {
+    const char *name;
+    const unsigned char *data;
+    unsigned int len;
+};
+extern const struct PortAiArray g_PortAiArrays[];
+extern const int g_PortAiArrayCount;
+
 /* --- preprocess.c: load-time byteswaps (PORT_PREPROCESS sites) ------------- */
 void portSwapU32InPlace(void *data, u32 size);
 void portSwapTextBank(u32 *bank);

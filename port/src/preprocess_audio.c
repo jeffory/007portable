@@ -231,6 +231,7 @@ void portSwapBankFile(void *data, u32 size, u32 tblRomBase)
     }
 
     free(ctx.visited);
+    portCrcTrace("ctl", tblRomBase, data, size);
     if (getenv("PORT_LOAD_TRACE") != NULL) {
         fprintf(stderr, "port/audio: ctl bank swapped (%u bytes, %d banks)\n", size, bankCount);
     }
@@ -260,6 +261,7 @@ void portSwapRareSeqTable(void *data)
         *(u16 *)(entry + 6) = swap16(*(u16 *)(entry + 6));
         entry += 8;
     }
+    portCrcTrace("seqtable", 0, data, 4 + (u32)count * 8);
 }
 
 /* Decompressed compressed-MIDI sequence: ALCMidiHdr is 17 u32s
@@ -271,4 +273,5 @@ void portSwapCMidiHdr(void *data)
     for (i = 0; i < 17; i++) {
         w[i] = swap32(w[i]);
     }
+    portCrcTrace("cmidi", 0, data, 17 * 4);
 }

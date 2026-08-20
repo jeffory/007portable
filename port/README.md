@@ -123,6 +123,25 @@ preprocess. Debug helpers: `PORT_AUTOSTART=1` (synthetic
 START presses), `PORT_LOAD_TRACE`, `PORT_MDL_TRACE`, `PORT_VTX_DUMP`
 with `PORT_DUMP_AFTER=<seconds>`.
 
+## Testing (phase-0 goldens)
+
+`port/tests/run_goldens.sh` runs the golden regression suite headlessly
+(Xvfb + llvmpipe; needs the ROM): `--selftest` plus AI-array CRCs, a
+natural boot to the GoldenEye logo, and `--stage dam`. It pins every
+asset-preprocess CRC (`PORT_CRC_TRACE=<file|1>` prints `CRCTRACE` lines at
+each byteswap site), four golden frames (`PORT_FRAME_DUMP=<dir>` +
+`PORT_FRAME_DUMP_AT=n[,n...]` + `PORT_FRAME_DUMP_EXIT=1` write PPMs of the
+finished backbuffer), and a spectral profile of the boot music (RMS,
+silence fraction, energy at the historic 2756 Hz mixer-whine bin). Boot
+frames are bit-stable run to run; the in-mission frame uses a 2.5%
+tolerance until the deterministic clock lands (phase 2). Re-pin with
+`run_goldens.sh capture` — only after intentionally changing output, and
+note goldens are tied to this machine's Mesa/llvmpipe version
+(`goldens/CAPTURED_WITH.txt`).
+
+Run it before every push; phase 1 (the N64-code removal) must keep it
+green throughout.
+
 ## Building (Fedora)
 
 ```sh

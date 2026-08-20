@@ -1,0 +1,2 @@
+OpenGL version string: 4.6 (Compatibility Profile) Mesa 26.1.6
+2026-08-20

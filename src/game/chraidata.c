@@ -827,3 +827,39 @@ char *setup_text_pointers[] = {
 
 
 
+
+#ifndef TARGET_N64
+/**
+ * PORT (phase 0 goldens): the 18 built-in AI arrays with their compiled
+ * sizes, so --selftest can CRC them against pinned values. The arrays were
+ * verified byte-exact vs the retail ROM once (M3); this catches them
+ * drifting under compiler/macro changes. Layout must match struct
+ * PortAiArray in port/include/port.h.
+ */
+struct PortAiArray {
+    const char *name;
+    const unsigned char *data;
+    unsigned int len;
+};
+const struct PortAiArray g_PortAiArrays[] = {
+    {"m_AimAtBond",                m_AimAtBond,                sizeof(m_AimAtBond)},
+    {"m_DeadAI",                   m_DeadAI,                   sizeof(m_DeadAI)},
+    {"m_StandardGuard",            m_StandardGuard,            sizeof(m_StandardGuard)},
+    {"m_IdleAnimations",           m_IdleAnimations,           sizeof(m_IdleAnimations)},
+    {"m_BashKeyboard",             m_BashKeyboard,             sizeof(m_BashKeyboard)},
+    {"m_SimpleGuardDeaf",          m_SimpleGuardDeaf,          sizeof(m_SimpleGuardDeaf)},
+    {"m_AttackBond",               m_AttackBond,               sizeof(m_AttackBond)},
+    {"m_RunToBond",                m_RunToBond,                sizeof(m_RunToBond)},
+    {"m_TryCloneSendOrRunToBond",  m_TryCloneSendOrRunToBond,  sizeof(m_TryCloneSendOrRunToBond)},
+    {"m_StandardClone",            m_StandardClone,            sizeof(m_StandardClone)},
+    {"m_SimpleGuard",              m_SimpleGuard,              sizeof(m_SimpleGuard)},
+    {"m_SimpleGuardAlarmRaiser",   m_SimpleGuardAlarmRaiser,   sizeof(m_SimpleGuardAlarmRaiser)},
+    {"m_StartleAndRunToBond",      m_StartleAndRunToBond,      sizeof(m_StartleAndRunToBond)},
+    {"m_RunToBondPersistent",      m_RunToBondPersistent,      sizeof(m_RunToBondPersistent)},
+    {"m_WaitOneSecond",            m_WaitOneSecond,            sizeof(m_WaitOneSecond)},
+    {"m_EndLevel",                 m_EndLevel,                 sizeof(m_EndLevel)},
+    {"m_DrawPistolAndAttackBond",  m_DrawPistolAndAttackBond,  sizeof(m_DrawPistolAndAttackBond)},
+    {"m_RemoveSelf",               m_RemoveSelf,               sizeof(m_RemoveSelf)},
+};
+const int g_PortAiArrayCount = sizeof(g_PortAiArrays) / sizeof(g_PortAiArrays[0]);
+#endif /* !TARGET_N64 */

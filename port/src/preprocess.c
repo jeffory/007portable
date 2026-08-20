@@ -82,6 +82,7 @@ void portSwapGlobalImagetable(void *data, u32 size)
     applySpans(data, size,
                sGlobalImagetableSpans,
                sizeof(sGlobalImagetableSpans) / sizeof(sGlobalImagetableSpans[0]));
+    portCrcTrace("gimgtable", 0, data, size);
 }
 
 void portSwapRarewareLogo(void *data, u32 size)
@@ -89,6 +90,7 @@ void portSwapRarewareLogo(void *data, u32 size)
     applySpans(data, size,
                sRarewareLogoSpans,
                sizeof(sRarewareLogoSpans) / sizeof(sRarewareLogoSpans[0]));
+    portCrcTrace("rarelogo", 0, data, size);
 }
 
 
@@ -181,6 +183,7 @@ void portSwapBriefingData(void *data)
     for (i = 0; i < 4 + 10 * 2; i++) {
         p[i] = swap16v(p[i]);
     }
+    portCrcTrace("briefing", 0, data, (4 + 10 * 2) * 2);
 }
 
 /**
@@ -202,5 +205,8 @@ void portSwapTextBank(u32 *bank)
         if (bank[i] != 0 && bank[i] < end) {
             end = bank[i];
         }
+    }
+    if (end != 0xFFFFFFFF) {
+        portCrcTrace("textbank", 0, bank, end); /* the swapped offset table */
     }
 }

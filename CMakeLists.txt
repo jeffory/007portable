@@ -143,6 +143,7 @@ file(GLOB AL_SOURCES CONFIGURE_DEPENDS
   ${CMAKE_SOURCE_DIR}/src/libultrare/audio/*.c)
 
 set(PORT_SRC
+  port/src/crctrace.c
   port/src/main.c
   port/src/preprocess_bg.c
   port/src/preprocess_setup.c

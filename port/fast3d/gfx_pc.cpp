@@ -39,6 +39,7 @@ uint32_t gfx_dbg_vtxdump;
 extern "C" uint32_t gfx_dbg_tridump;
 uint32_t gfx_dbg_tridump;
 extern "C" uint32_t gfx_dbg_ccdump;
+extern "C" void gfx_dbg_frame_dump(const char* path); /* gfx_opengl.cpp */
 uint32_t gfx_dbg_ccdump;
 uint32_t gfx_dbg_tris_in, gfx_dbg_tris_out, gfx_dbg_vtx, gfx_dbg_mtx;
 
@@ -3063,6 +3064,44 @@ extern "C" void gfx_run(Gfx* commands) {
             gfx_dbg_final_probe();
         }
     }
+    /* Phase-0 golden frames: PORT_FRAME_DUMP=<dir> + PORT_FRAME_DUMP_AT=n[,n...]
+     * writes frame_<n>.ppm for the named frame indices (counted over
+     * non-dropped frames since boot), then exits after the last one when
+     * PORT_FRAME_DUMP_EXIT=1. */
+    {
+        static int fd_frame = -1;
+        static const char* fd_dir;
+        static std::vector<int> fd_at;
+        if (fd_frame == -1) {
+            fd_frame = 0;
+            fd_dir = getenv("PORT_FRAME_DUMP");
+            const char* at = getenv("PORT_FRAME_DUMP_AT");
+            if (fd_dir != NULL && at != NULL) {
+                while (*at != '\0') {
+                    fd_at.push_back(atoi(at));
+                    const char* c = strchr(at, ',');
+                    if (c == NULL) {
+                        break;
+                    }
+                    at = c + 1;
+                }
+            }
+        }
+        fd_frame++;
+        if (fd_dir != NULL && !fd_at.empty()) {
+            for (size_t i = 0; i < fd_at.size(); i++) {
+                if (fd_at[i] == fd_frame) {
+                    char path[1024];
+                    snprintf(path, sizeof(path), "%s/frame_%05d.ppm", fd_dir, fd_frame);
+                    gfx_dbg_frame_dump(path);
+                    if (fd_frame >= fd_at.back() && getenv("PORT_FRAME_DUMP_EXIT") != NULL) {
+                        exit(0);
+                    }
+                }
+            }
+        }
+    }
+
     gfxFramebuffer = 0;
 
     if (game_renders_to_framebuffer) {
