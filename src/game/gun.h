@@ -282,7 +282,7 @@ struct EarWhistleSounds {
     s16 arr[5];
 };
 
-extern CasingRecord g_Casings[20];
+extern CasingRecord *g_Casings;
 extern u32 size_item_buffer[];
 extern WeaponStats sniperrifle_stats;
 extern WeaponStats camera_stats;

@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include <platform_info.h>
+#include "token.h"
 #include <deb.h>
 #include "memp.h"
 #include "game/language.h"

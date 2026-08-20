@@ -1052,7 +1052,7 @@ void sub_GAME_7F06D490(Model *model, ModelNode *modelNode)
             {
                 rw->Header.unk14 = sub_GAME_7F06D0CC(rw->Header.unk30, rw->Header.unk20, model->unk2c);
             }
-            while (model->unka0 * 0);
+            while (model->unka0 && 0); /* was `* 0` on an s32 slot */
         }
     }
 
@@ -2721,7 +2721,7 @@ void modelSetAnimFlipFunction(Model *model, void *callback) {
 /**
  * Unused Function
 */
-void sub_GAME_7F06FE44(Model *model, s32 arg1) {
+void sub_GAME_7F06FE44(Model *model, void *arg1) {
     model->unk9c = arg1;
 }
 
@@ -2780,7 +2780,7 @@ void modelSetAnimPlaySpeed(Model *model, f32 animation_rate, f32 startframe) {
 }
 
 
-void sub_GAME_7F06FF5C(Model *model, s32 arg1) {
+void sub_GAME_7F06FF5C(Model *model, void *arg1) {
     model->unka0 = arg1;
 }
 

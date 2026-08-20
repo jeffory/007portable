@@ -8,7 +8,11 @@
 //bss
 
 // Where animation frames are saved. Can possibly hold as much as nine, but the game will ever store four at maximum.
-char animations_frame_buffer[0x2D0];
+/* portLowAlloc'd at init: the anim-frame DMA target's address round-trips
+ * u32 in loadAnimationFrame, so it must live below 4GB (a PIE static
+ * would not) */
+char *animations_frame_buffer;
+#define ANIMATIONS_FRAME_BUFFER_SIZE 0x2D0
 
 // Msg Queue stuff (unused)
 OSMesgQueue animMsgQ;
@@ -21,8 +25,8 @@ struct animation_table_data * ptr_animation_table;
 //data
 struct bondstruct_unk_animation_related D_80029D60 = {
     NULL,
-    &animations_frame_buffer, // Two pointers. One always points to the start of the buffer, the other can be modified.
-    &animations_frame_buffer
+    NULL, /* both set to the portLowAlloc'd frame buffer at init below */
+    NULL
 };
 
 s32 animation_table_ptrs1[] = {
@@ -285,6 +289,11 @@ void alloc_load_expand_ani_table(void)
     s32 animsDataSegmentSize;
     
     osCreateMesgQueue(&animMsgQ, animMesg, 8);
+    if (animations_frame_buffer == NULL) {
+        animations_frame_buffer = portLowAlloc(ANIMATIONS_FRAME_BUFFER_SIZE);
+    }
+    D_80029D60.animBufferPtr1 = animations_frame_buffer;
+    D_80029D60.animBufferPtr2 = animations_frame_buffer;
     initAnimationsBuffer(&D_80029D60, &animMsgQ, &dword_CODE_bss_80069458);
     
     animsDataSegmentSize = (s32)&_animation_dataSegmentEnd - (s32)&_animation_dataSegmentStart;

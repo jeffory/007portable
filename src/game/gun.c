@@ -43,7 +43,7 @@ ALSoundState *g_CasingSfxState;
 ALSoundState* g_UnusedSfxState; // Unused, type assumed from surrounding variables.
 ALSoundState* g_ImpactSfxStates[NUM_IMPACT_SFX_STATES];
 
-CasingRecord g_Casings[20];
+CasingRecord *g_Casings; /* portLowAlloc'd in initobjects.c (PIE-safe) */
 s32 dword_CODE_bss_80076A48; // Unused
 
 #ifdef REFRESH_PAL

@@ -267,7 +267,7 @@ s32     alResampleParam(void *f, s32 paramID, void *param);
 
 typedef struct ALSave_s {
     ALFilter            filter;
-    s32	       		dramout;
+    s16	       		*dramout; /* was s32: PIE statics live above 4GB */
     s32                 first;
 } ALSave;
 

@@ -291,8 +291,15 @@ void casingsInit(void)
  */
 void initCasingPool(void) 
 {
-    CasingRecord *end = &g_Casings[20];
-    CasingRecord *ptr = &g_Casings[0];
+    CasingRecord *end;
+    CasingRecord *ptr;
+
+    if (g_Casings == NULL) {
+        g_Casings = portLowAlloc(20 * sizeof(CasingRecord)); /* PIE-safe pool */
+        memset(g_Casings, 0, 20 * sizeof(CasingRecord));
+    }
+    end = &g_Casings[20];
+    ptr = &g_Casings[0];
     
     while (end > ptr) 
     {

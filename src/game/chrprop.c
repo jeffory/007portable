@@ -56,7 +56,10 @@ u32 num_obj_position_data_entries;
  * 
  * This is g_Vars.props in PD.
 */
-PropRecord g_Props[MAX_PROPS];
+/* portLowAlloc'd at reset (initobjects.c): prop pointers round-trip u32
+ * slots in stage data, so the pool must live below 4GB — as a PIE static
+ * it wouldn't (the -no-pie builds kept it at 0x400000-ish by accident) */
+PropRecord *g_Props;
 
 //CODE.bss:80071618
 s16 *RoomPropListBlockIndices;
@@ -114,12 +117,14 @@ AmmoCrateRecord g_AmmoCrates[MAX_AMMO_CRATES];
 /**
  * Address 0x80073DC0.
 */
-Projectile g_Projectiles[PROJECTILES_ARR_MAX];
+/* PIE-safe pools (portLowAlloc'd in initobjects.c): element pointers
+ * round-trip u32 slots in game data, so they must live below 4GB */
+Projectile *g_Projectiles;
 
 /**
  * Address 0x80075030.
 */
-Embedment g_Embedments[EMBEDMENT_ARR_MAX];
+Embedment *g_Embedments;
 
 //CODE.bss:80075B70
 struct Model *g_CurrentProjectileModel;

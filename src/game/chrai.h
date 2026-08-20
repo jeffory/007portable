@@ -224,7 +224,7 @@ extern u32 gasDoesDamageFlag;
 extern f32 difficulty ;
 extern stagesetup g_CurrentSetup;
 extern s16 * ptr_list_object_lookup_indices;
-extern PropRecord g_Props[];
+extern PropRecord *g_Props;
 
 extern PropRecord *g_ActivePropsTail;
 extern PropRecord *g_ActivePropsHead;
@@ -240,8 +240,8 @@ extern sfxRecord                          sfx_related[];
 extern struct WeaponObjRecord             g_WeaponSlots[];
 extern struct HatRecord                   g_HatSlots[];
 extern struct AmmoCrateRecord             g_AmmoCrates[];
-extern struct Projectile                  g_Projectiles[];
-extern struct Embedment                   g_Embedments[];
+extern struct Projectile                  *g_Projectiles;
+extern struct Embedment                   *g_Embedments;
 extern struct coord3d                     flt_CODE_bss_80075B78;
 extern struct coord3d                     flt_CODE_bss_80075B88;
 

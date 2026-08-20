@@ -1578,10 +1578,10 @@ typedef union
             // 0x90
             f32               animloopframe; /*0x90*/
             f32               animloopmerge; /*0x94*/
-            s32               animflipfunc; /*0x98*/
-            s32               unk9c;
-            // 0xa0
-            s32               unka0; // This is likely a function pointer, see sub_GAME_7F06D490()
+            void            (*animflipfunc)(void); /*0x98 (32-bit); widened: PIE code lives above 4GB */
+            void             *unk9c;
+            // 0xa0 (32-bit)
+            void             *unka0; /* ground callback, called in sub_GAME_7F06D490() */
             f32               playspeed; // used by ACT_STAND in chrlv
             f32               animrate;
             f32               unkac;

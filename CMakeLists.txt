@@ -283,7 +283,6 @@ target_compile_options(ge007-port PRIVATE
     -fsigned-char
     -fwrapv
     -fcommon
-    -Wno-implicit-function-declaration
     -Wno-int-conversion
     -Wno-incompatible-pointer-types
     -Wno-implicit-int
@@ -307,9 +306,20 @@ target_compile_options(ge007-port PRIVATE
 # and no absolute symbols (PIE/lld/NDK-safe). Replaces rom_symbols.ld.
 target_compile_options(ge007-port PRIVATE
   -include ${CMAKE_SOURCE_DIR}/port/include/rom_offsets.h)
-target_link_options(ge007-port PRIVATE
-  -no-pie
-)
+# GE_PIE=ON builds a position-independent executable (Android-shaped): the
+# game heap/stack/ROM already live below 4GB via portLowAlloc, so this
+# tests whether any shared code still truncates a pointer TO A STATIC
+# through u32 (the one thing -no-pie's fixed 0x400000 image guaranteed).
+option(GE_PIE "build PIE instead of -no-pie" OFF)
+if(NOT GE_PIE)
+  target_link_options(ge007-port PRIVATE -no-pie)
+else()
+  target_compile_options(ge007-port PRIVATE -fPIE)
+  if(TARGET fast3d)
+    target_compile_options(fast3d PRIVATE -fPIE)
+  endif()
+  target_link_options(ge007-port PRIVATE -pie)
+endif()
 
 if(GE_HAVE_SDL2)
   target_compile_definitions(ge007-port PRIVATE GE_HAVE_FAST3D)

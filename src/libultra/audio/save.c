@@ -46,7 +46,6 @@ s32 alSaveParam(void *filter, s32 paramID, void *param)
 {
     ALSave *a = (ALSave *) filter;
     ALFilter *f = (ALFilter *) filter;
-    s32 pp = (s32) param;
 
     switch (paramID) {
         case (AL_FILTER_SET_SOURCE):
@@ -54,7 +53,7 @@ s32 alSaveParam(void *filter, s32 paramID, void *param)
             break;
 
         case (AL_FILTER_SET_DRAM): 
-            a->dramout = pp;
+            a->dramout = (s16 *)param; /* was via (s32): truncated PIE statics */
             break;
             
         default:

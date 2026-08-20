@@ -1,4 +1,7 @@
 #include <ultra64.h>
+#include "gun.h"
+#include "port.h"
+#include <string.h>
 #include <memp.h>
 #include "bg.h"
 #include "initobjects.h"
@@ -49,6 +52,18 @@ void init_load_objpos_table(void)
     g_OnScreenPropCount = 0;
     g_OnScreenPropList[0] = NULL;
     g_LastOnScreenProp = (PropRecord *) g_OnScreenPropList;
+    if (g_Props == NULL) {
+        g_Props = portLowAlloc(MAX_PROPS * sizeof(PropRecord)); /* PIE-safe pool */
+        memset(g_Props, 0, MAX_PROPS * sizeof(PropRecord));
+    }
+    if (g_Projectiles == NULL) {
+        g_Projectiles = portLowAlloc(PROJECTILES_ARR_MAX * sizeof(Projectile));
+        memset(g_Projectiles, 0, PROJECTILES_ARR_MAX * sizeof(Projectile));
+        g_Embedments = portLowAlloc(EMBEDMENT_ARR_MAX * sizeof(Embedment));
+        memset(g_Embedments, 0, EMBEDMENT_ARR_MAX * sizeof(Embedment));
+        g_Casings = portLowAlloc(20 * sizeof(CasingRecord));
+        memset(g_Casings, 0, 20 * sizeof(CasingRecord));
+    }
     g_FreeProps = g_Props;
 
     for (i = 0; i < (MAX_PROPS - 1); i++)

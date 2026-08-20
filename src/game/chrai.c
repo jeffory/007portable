@@ -33,6 +33,7 @@
 #include <random.h>
 #include <snd.h>
 #include <ultra64.h>
+#include "port.h"
 
 // hack? used to match as called with 2 args, but decompiled code takes 1
 extern s32 objectiveGetStatus_WEAK(s32 objectiveNum, s32);
@@ -693,6 +694,34 @@ s32 chraiitemsize(u8 *AIList, s32 offset)
     }
 }
 
+/* PORT (PIE): the built-in m_* AI bytecode arrays are statics; their
+ * addresses round-trip u32 slots on the way into chr->ailist, which only
+ * survived while -no-pie kept the image below 4GB. Relocate each list
+ * into portLowAlloc'd memory once (lengths from the selftest's
+ * g_PortAiArrays table) and rewrite the lookup table, so both directions
+ * of the mapping agree on the low copies. */
+static void chraiRelocateGlobalLists(void)
+{
+    static s32 done;
+    s32 i, j;
+
+    if (done) {
+        return;
+    }
+    done = 1;
+    for (i = 0; g_GlobalAILists[i].ailist; i++) {
+        for (j = 0; j < g_PortAiArrayCount; j++) {
+            if ((const void *)g_GlobalAILists[i].ailist == (const void *)g_PortAiArrays[j].data) {
+                void *low = portLowAlloc(g_PortAiArrays[j].len);
+                memcpy(low, g_PortAiArrays[j].data, g_PortAiArrays[j].len);
+                g_GlobalAILists[i].ailist = low;
+                break;
+            }
+        }
+    }
+}
+
+
 /**
  * Get ID of AIList
  * @param AIList: Ailist to get ID of
@@ -714,6 +743,7 @@ s32 chraiGetAIListID(AIRecord *AIList, bool *isGlobalAIList)
         }
     }
 
+    chraiRelocateGlobalLists();
     for (i = 0; g_GlobalAILists[i].ailist; i++)
     {
         if (g_GlobalAILists[i].ailist == AIList)
@@ -789,6 +819,7 @@ AIRecord *ailistFindById(s32 ID)
     }
     else
     {
+        chraiRelocateGlobalLists();
         for (i = 0; g_GlobalAILists[i].ailist; i++)
         {
             if (g_GlobalAILists[i].ID == ID)
