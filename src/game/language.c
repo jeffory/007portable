@@ -397,6 +397,7 @@ void langClearBank(s32 textBank) {
  */
 u8 * langGet(s32 slotID)
 {
+#ifdef TARGET_N64
     u32 * textbank_ptr = g_LangBanks[slotID >> 10]; /* get the text file bank ID index the text ptr table */
     u32 textslot_offset = textbank_ptr[slotID & 0x03FF]; /* load the textbank ptr table then get the slot's offset */
 
@@ -406,4 +407,27 @@ u8 * langGet(s32 slotID)
     return (textslot_offset != 0) ? (u8 *)output_slot : "Sorry, string not loaded.";
     #endif
     return (textslot_offset != 0) ? (u8*)output_slot : NULL;
+#else
+    /* PC: guard out-of-range ids and unloaded banks so a bad text id
+     * degrades into the callers' existing NULL ("no text") paths instead of
+     * dereferencing a NULL bank pointer. */
+    u32 * textbank_ptr;
+    u32 textslot_offset;
+    u32 output_slot;
+    s32 bank = slotID >> 10;
+
+    if (bank < 0 || bank >= (s32)(sizeof(g_LangBanks) / sizeof(g_LangBanks[0]))) {
+        return NULL;
+    }
+
+    textbank_ptr = (u32 *)g_LangBanks[bank];
+    if (textbank_ptr == NULL) {
+        return NULL;
+    }
+
+    textslot_offset = textbank_ptr[slotID & 0x03FF];
+    output_slot = textslot_offset;
+    output_slot += (u32)textbank_ptr;
+    return (textslot_offset != 0) ? (u8*)output_slot : NULL;
+#endif
 }

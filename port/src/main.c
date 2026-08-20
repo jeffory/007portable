@@ -137,8 +137,10 @@ static void applyStageOverride(void)
     }
     /* -mt <KB>: Rare's own texture-pool-size token; the N64 default is too
      * small for llvmpipe-visible full-stage texture sets, and RAM is ample. */
-    snprintf(tok, sizeof(tok), "port -level_%02d -mt4096%s%s",
-             id, hard != NULL ? " -hard" : "", hard != NULL ? hard : "");
+    snprintf(tok, sizeof(tok), "port -level_%02d -mt4096%s%s%s%s",
+             id, hard != NULL ? " -hard" : "", hard != NULL ? hard : "",
+             getenv("PORT_TOKENS") != NULL ? " " : "",
+             getenv("PORT_TOKENS") != NULL ? getenv("PORT_TOKENS") : "");
     tokenSetString(tok);
     fprintf(stderr, "port/note: stage override: \"%s\"\n", tok);
 }

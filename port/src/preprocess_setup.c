@@ -133,9 +133,46 @@ static s32 swapPropDef(PropDefHeaderRecord *pdef)
     case PROPDEF_OBJECTIVE_ENTER_ROOM:
     case PROPDEF_OBJECTIVE_DEPOSIT_OBJECT_IN_ROOM:
     case PROPDEF_OBJECTIVE_COPY_ITEM:
+        /* MissionObjectiveRecord / criteria_* shapes: every body field is a
+         * 32-bit word (ObjRefID / pad / weaponnum @4, TextID / status @8,
+         * MinDificulty / flag @0xC, runtime list pointer after). The old
+         * halves@4 treatment mangled the tag/pad ids read by
+         * get_status_of_objective and objectivestatusCheck*. */
+        swapWords(rec + 4, words - 1);
+        break;
+
     case PROPDEF_WATCH_MENU_OBJECTIVE_TEXT:
+        /* struct watchMenuObjectiveText: u32 menu @4; u16 reserved @8;
+         * u16 text @0xA; runtime next pointer @0xC. The old halves@4 +
+         * words@8 treatment turned menu into menu<<16 and text into 0, so
+         * the watch's mission-briefing tab called langGet(0) and crashed on
+         * the NULL g_LangBanks[0]. */
+        swapWords(rec + 4, 1);
+        if (words > 2) {
+            swapHalves(rec + 8, 2);
+        }
+        if (words > 3) {
+            swapWords(rec + 0xC, words - 3);
+        }
+        break;
+
+    case PROPDEF_OBJECTIVE_START:
+        /* struct objective_entry: u32 menu @4; u16 reserved @8; u16 text
+         * @0xA; u16 unkC @0xC; u8 unkD @0xE; s8 difficulty @0xF. The old
+         * all-words treatment zeroed the text id (briefing objectives
+         * sub-page) and read the wrong byte as the difficulty. */
+        swapWords(rec + 4, 1);
+        if (words > 2) {
+            swapHalves(rec + 8, 2);
+        }
+        if (words > 3) {
+            swapHalves(rec + 0xC, 1); /* unkD/difficulty are bytes: leave */
+        }
+        break;
+
     case PROPDEF_GAS_RELEASING:
-        /* u16 unk4 (+u16 unk6 where present), then words */
+        /* ObjectRecord-shaped (prop.c casts it for domakedefaultobj):
+         * u16 unk4 + u16 unk6, then words */
         swapHalves(rec + 4, 2);
         if (words > 2) {
             swapWords(rec + 8, words - 2);
@@ -153,7 +190,6 @@ static s32 swapPropDef(PropDefHeaderRecord *pdef)
             case PROPDEF_DOOR_SCALE:
             case PROPDEF_LINK:
             case PROPDEF_SWITCH:
-            case PROPDEF_OBJECTIVE_START:
             case PROPDEF_OBJECTIVE_END:
             case PROPDEF_OBJECTIVE_NULL:
             case PROPDEF_RENAME:
@@ -184,6 +220,29 @@ static s32 swapPropDef(PropDefHeaderRecord *pdef)
                     if (words * 4 > 0x84) {
                         swapWords(rec + 0x84, 1);
                         swapHalves(rec + 0x84, 2);
+                    }
+                } else if (type == PROPDEF_DOOR) {
+                    /* DoorRecord: u16 doorFlags / u16 doorType at 0x98. The
+                     * word swap exchanges the two halves (Dam's sliding gates
+                     * became doorFlags=0/doorType=12, losing CLIP_TO_BBOX and
+                     * FLIP, so they slid the wrong way and jammed partway on
+                     * collision). Redo as halfwords. The 0xC4 word (s16
+                     * CullDist; s8 soundType; s8 fadeTime60) stays
+                     * word-swapped: its only consumer reads it as a raw s32
+                     * (propobj.c:5839), which the word swap reproduces. */
+                    swapWords(rec + 0x98, 1);   /* undo */
+                    swapHalves(rec + 0x98, 2);  /* redo */
+                    if (getenv("PORT_DOOR_TRACE") != NULL) {
+                        fprintf(stderr,
+                                "port/door: obj %d pad %d link %d maxFrac %08x "
+                                "perim %08x accel %08x maxSpeed %08x flags %04x "
+                                "type %04x key %08x autoclose %u\n",
+                                *(s16 *)(rec + 4), *(s16 *)(rec + 6),
+                                *(s32 *)(rec + 0x80), *(u32 *)(rec + 0x84),
+                                *(u32 *)(rec + 0x88), *(u32 *)(rec + 0x8c),
+                                *(u32 *)(rec + 0x94), *(u16 *)(rec + 0x98),
+                                *(u16 *)(rec + 0x9a), *(u32 *)(rec + 0x9c),
+                                *(u32 *)(rec + 0xa0));
                     }
                 }
                 break;
@@ -517,6 +576,30 @@ void *portSwapSetupFile(void *data)
     /* intro records */
     if (hdr[2] != 0) {
         swapIntro(base, hdr[2]);
+
+        /* PORT_SPAWN_PAD=<n>: debug aid — retarget the spawn intro record's
+         * pad so a stage can be entered at an arbitrary pad. */
+        if (getenv("PORT_SPAWN_PAD") != NULL) {
+            u32 *w = (u32 *)(base + hdr[2]);
+            for (;;) {
+                s32 t = (s32)*w;
+                s32 words =
+                    t == INTROTYPE_SPAWN ? 3 : t == INTROTYPE_ITEM ? 4 :
+                    t == INTROTYPE_AMMO ? 4 : t == INTROTYPE_SWIRL ? 8 :
+                    t == INTROTYPE_ANIM ? 2 : t == INTROTYPE_CUFF ? 2 :
+                    t == INTROTYPE_CAMERA ? 10 : t == INTROTYPE_WATCH ? 3 :
+                    t == INTROTYPE_CREDITS ? 2 : 0;
+                if (t == INTROTYPE_SPAWN) {
+                    w[1] = (u32)atoi(getenv("PORT_SPAWN_PAD"));
+                    fprintf(stderr, "port: spawn pad override -> %u\n", w[1]);
+                    break;
+                }
+                if (words == 0) {
+                    break;
+                }
+                w += words;
+            }
+        }
     }
 
     /* prop definitions until PROPDEF_END (AI bytecode inside guards etc.
