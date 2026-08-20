@@ -100,6 +100,7 @@ void *portSwapStanFile(void *file); /* 64-bit: returns a relocated native copy *
 /* stage setup file (preprocess_setup.c) */
 void *portSwapSetupFile(void *data); /* 64-bit: returns a relocated native copy */
 void *portSetupFileBlobBase(void);
+s32  portPropdefWords64(u8 type);    /* native propdef stride, 0 = unknown type */
 
 /* audio (preprocess_audio.c, audio.c) */
 void portSwapBankFile(void *data, u32 size, u32 tblRomBase);

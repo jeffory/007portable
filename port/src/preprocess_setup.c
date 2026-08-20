@@ -90,6 +90,46 @@ static u32 *swapIntro(u8 *base, u32 off) /* returns one past the last swapped wo
     }
 }
 
+#include "propdef_layout.inc"
+
+/* Per-type layout lookup from the generated table. Returns 1 when the
+ * record needs native transcription (pointer members or stride change),
+ * 0 when it can be copied verbatim. Unknown types fall back to
+ * sizepropdef(), which on 64-bit consults portPropdefWords64() first —
+ * also table-driven — so walk and emission can never disagree. */
+static s32 propdefLayout(PropDefHeaderRecord *pdef, u32 *b32, u32 *b64,
+                         const u16 **pp32, const u16 **pp64, s32 *np,
+                         u32 *structBytes32)
+{
+    if (pdef->type < PORT_PROPDEF_LAYOUT_COUNT
+        && kPropdefLayouts[pdef->type].blobBytes != 0) {
+        const struct PortPropdefLayout *L = &kPropdefLayouts[pdef->type];
+
+        *b32 = L->blobBytes;
+        *b64 = L->nativeBytes;
+        *pp32 = L->p32;
+        *pp64 = L->p64;
+        *np = L->nptr;
+        *structBytes32 = L->structBytes32;
+        return L->nptr > 0 || L->blobBytes != L->nativeBytes;
+    }
+    *b32 = *b64 = *structBytes32 = (u32)sizepropdef(pdef) * 4;
+    *pp32 = *pp64 = NULL;
+    *np = 0;
+    return 0;
+}
+
+/* 64-bit sizepropdef() override (called from loadobjectmodel.c): native
+ * walk stride per type, 0 = not in the table (caller falls through to its
+ * own switch). */
+s32 portPropdefWords64(u8 type)
+{
+    if (type < PORT_PROPDEF_LAYOUT_COUNT) {
+        return (s32)(kPropdefLayouts[type].nativeBytes / 4);
+    }
+    return 0;
+}
+
 /**
  * One prop definition record. The header is {u16 extrascale; u8 state;
  * u8 type} — only the u16 swaps, the type byte is position-stable so it can
@@ -99,8 +139,18 @@ static u32 *swapIntro(u8 *base, u32 off) /* returns one past the last swapped wo
 static s32 swapPropDef(PropDefHeaderRecord *pdef)
 {
     u8 *rec = (u8 *)pdef;
-    s32 words = sizepropdef(pdef); /* record size in 32-bit words, incl. header */
+    s32 words;
     s32 type = pdef->type;
+    {
+        /* BLOB stride: sizepropdef() returns native word counts, which on
+         * 64-bit differ for the pointer-bearing types — walking the 32-bit
+         * blob with them would mis-stride and swap into the next record. */
+        u32 b32, b64, sb32;
+        const u16 *q32, *q64;
+        s32 np;
+        propdefLayout(pdef, &b32, &b64, &q32, &q64, &np, &sb32);
+        words = (s32)(b32 / 4);
+    }
 
     swapHalves(rec, 1); /* extrascale */
 
@@ -277,11 +327,38 @@ void *portSetupFileBlobBase(void)
  * terminator, so 64-bit stages boot with no objects/guards. PORT_TODO(M6).
  * ------------------------------------------------------------------------- */
 
+/* Transcribe one 32-bit-layout propdef record into its native struct:
+ * non-pointer gaps copy verbatim at the 64 gap's start (any excess is the
+ * ABI's pre-pointer padding, left zeroed), pointer slots zero-extend the
+ * blob's u32 value (offsets awaiting the game's own promotion, or 0). */
+static void expandPropdefRecord(u8 *dst, const u8 *src,
+                                const u16 *p32, const u16 *p64, s32 np,
+                                u32 sz32, u32 sz64)
+{
+    u32 s = 0, d = 0;
+    s32 i;
+
+    memset(dst, 0, sz64);
+    for (i = 0; i < np; i++) {
+        u32 gap = (p32[i] < sz32 ? p32[i] : sz32) - s;
+
+        memcpy(dst + d, src + s, gap);
+        if (p32[i] + 4 > sz32) {
+            return; /* record ends inside/before this pointer slot */
+        }
+        *(uintptr_t *)(dst + p64[i]) = (uintptr_t)*(const u32 *)(src + p32[i]);
+        s = p32[i] + 4;
+        d = p64[i] + 8;
+    }
+    memcpy(dst + d, src + s, sz32 - s);
+}
+
 static void *portRebuildSetupFile64(u8 *base)
 {
     u32 *hdr = (u32 *)base;
     s32 nwp = 0, nwg = 0, nai = 0, npath = 0, npad = 0, nbpad = 0, npn = 0, nbpn = 0;
     u32 introBytes = 0;
+    u32 propBytes64 = 16; /* terminator + slack */
     u32 total;
     u8 *nat;
     u8 *cur;
@@ -324,6 +401,22 @@ static void *portRebuildSetupFile64(u8 *base)
         }
     }
 
+    /* prop definitions: native strides for the sizeof() family, blob
+     * strides for the hardcoded-word-count types (identical layouts) */
+    if (hdr[3]) {
+        PropDefHeaderRecord *pdef = (PropDefHeaderRecord *)(base + hdr[3]);
+
+        while (pdef->type != PROPDEF_END) {
+            u32 b32, b64, sb32;
+            const u16 *q32, *q64;
+            s32 np;
+
+            propdefLayout(pdef, &b32, &b64, &q32, &q64, &np, &sb32);
+            propBytes64 += b64;
+            pdef = (PropDefHeaderRecord *)((u8 *)pdef + b32);
+        }
+    }
+
     total = sizeof(stagesetup)
           + (u32)nwp * sizeof(waypoint)
           + (u32)(nwg + 1) * sizeof(waygroup)
@@ -334,7 +427,7 @@ static void *portRebuildSetupFile64(u8 *base)
           + (u32)(npn + 1) * sizeof(pname)
           + (u32)(nbpn + 1) * sizeof(pname)
           + introBytes
-          + 16 /* empty propdef terminator */ + 64 /* alignment slop */;
+          + propBytes64 + 64 /* alignment slop */;
 
     nat = portLowAlloc(total);
     if (nat == NULL) {
@@ -507,18 +600,58 @@ static void *portRebuildSetupFile64(u8 *base)
         nh->boundpadnames = NULL;
     }
 
-    /* PORT_TODO(M6): prop definitions are in-place ObjectRecord variants
-     * and need per-type native expansion; give the game an empty list so
-     * the stage boots without objects/guards. */
+    /* prop definitions: expand each record to native layout (pointer
+     * slots zero-extended; the game's own promotion fills them). Types
+     * with hardcoded word counts copy verbatim — their 32-bit shape IS
+     * the native shape. Cross-references (linkedDoorOffset, TAG
+     * OffsetToObj, LINK indices) are record-index based, so the stride
+     * change is invisible to the game. */
     {
-        PropDefHeaderRecord *term = (PropDefHeaderRecord *)cur;
+        s32 nprop = 0;
 
-        term->type = PROPDEF_END;
-        nh->propDefs = (void *)(uintptr_t)(u32)((uintptr_t)term - craftbase);
-        cur += 16;
+        cur = (u8 *)(((uintptr_t)cur + 7) & ~(uintptr_t)7);
+        nh->propDefs = (void *)(uintptr_t)(u32)((uintptr_t)cur - craftbase);
         if (hdr[3]) {
-            fprintf(stderr, "port/setup64: prop definitions not yet expanded on "
-                            "64-bit; stage objects/guards disabled (PORT_TODO)\n");
+            PropDefHeaderRecord *pdef = (PropDefHeaderRecord *)(base + hdr[3]);
+
+            while (pdef->type != PROPDEF_END) {
+                u32 b32, b64, sb32;
+                const u16 *q32, *q64;
+                s32 np;
+
+                if (propdefLayout(pdef, &b32, &b64, &q32, &q64, &np, &sb32)) {
+                    expandPropdefRecord(cur, (const u8 *)pdef, q32, q64, np,
+                                        b32 < sb32 ? b32 : sb32, b64);
+                    if (b32 > sb32) {
+                        /* blob record longer than the access struct (Rare's
+                         * hardcoded strides): tail is same-layout, copy it */
+                        memcpy(cur + b64 - (b32 - sb32),
+                               (const u8 *)pdef + sb32, b32 - sb32);
+                    }
+                } else {
+                    memcpy(cur, pdef, b32);
+                }
+                /* the game walks this array with sizepropdef() strides;
+                 * any mismatch with our emission desyncs every following
+                 * record — fail loudly instead */
+                if ((u32)sizepropdef((PropDefHeaderRecord *)cur) * 4 != b64) {
+                    fprintf(stderr, "port/setup64: stride mismatch on propdef %d "
+                            "type %d: emitted %u, sizepropdef %u\n",
+                            nprop, ((PropDefHeaderRecord *)cur)->type, b64,
+                            (u32)sizepropdef((PropDefHeaderRecord *)cur) * 4);
+                }
+                cur += b64;
+                pdef = (PropDefHeaderRecord *)((u8 *)pdef + b32);
+                nprop++;
+            }
+            /* terminator record (4-byte header, extrascale included) */
+            memcpy(cur, pdef, sizeof(PropDefHeaderRecord));
+        } else {
+            ((PropDefHeaderRecord *)cur)->type = PROPDEF_END;
+        }
+        cur += 16;
+        if (getenv("PORT_LOAD_TRACE") != NULL) {
+            fprintf(stderr, "port/setup64: %d prop definitions expanded\n", nprop);
         }
     }
 
@@ -620,8 +753,15 @@ void *portSwapSetupFile(void *data)
     off = hdr[3];
     if (off != 0) {
         PropDefHeaderRecord *pdef = (PropDefHeaderRecord *)(base + off);
+        s32 pidx = 0;
+        s32 ptrace = getenv("PORT_PROPDEF_TRACE") != NULL;
         while (pdef->type != PROPDEF_END) {
             s32 words = swapPropDef(pdef);
+            if (ptrace) {
+                fprintf(stderr, "PROPDEF %d type=%d words=%d off=0x%x\n",
+                        pidx++, pdef->type, words,
+                        (unsigned)((u8 *)pdef - base));
+            }
             pdef = (PropDefHeaderRecord *)((u32 *)pdef + words);
         }
         swapHalves(pdef, 1); /* terminator's extrascale, for completeness */

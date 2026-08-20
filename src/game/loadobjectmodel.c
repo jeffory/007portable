@@ -46,6 +46,19 @@ s32 getposstan(struct coord3d *pos, StandTile *stan, f32 radius, struct coord3d 
 */
 s32 sizepropdef(PropDefHeaderRecord *pdef)
 {
+#if IS_64_BIT
+    /* The setup loader expands blob records to native layout with the
+     * generated per-type strides (port/src/propdef_layout.inc); walking
+     * with this table keeps every consumer in sync with that emission —
+     * the hardcoded word counts below are the 32-bit blob strides. */
+    {
+        s32 w = portPropdefWords64(pdef->type);
+
+        if (w != 0) {
+            return w;
+        }
+    }
+#endif
     #if 1
     switch (pdef->type)
     {
