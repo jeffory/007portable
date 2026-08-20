@@ -51,6 +51,11 @@ void portPlatformPoll(void);                 /* window/input events; may exit() 
 void portPlatformSleepMs(u32 ms);
 u64  portPlatformTimeNs(void);               /* monotonic */
 
+/* --- system.c: virtual clock (PORT_DETERMINISTIC=1, phase 2) --------------- */
+int  portTimeVirtualActive(void);
+unsigned long long portTimeVirtualNow(void);
+void portTimeVirtualStep(unsigned long long ns);
+
 /* --- crctrace.c: golden CRC reporting (PORT_CRC_TRACE, phase 0) ------------ */
 u32  portCrc32(const void *data, u32 len);
 u32  portCrc32Update(u32 crc, const void *data, u32 len); /* seed 0xFFFFFFFF, xor-out yourself */

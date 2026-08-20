@@ -111,6 +111,12 @@ static void schedRetrace(void)
     musicFadeTick();
     portAudioFrame(); /* M4: synthesize + queue one video frame of audio */
 
+    {
+        static u32 sRetraceTick;
+        void portStateHashTick(u32 tick);
+        portStateHashTick(++sRetraceTick); /* PORT_STATE_HASH, phase 2 */
+    }
+
     for (i = 0; i < 4; i++) {
         if (sClients[i].used) {
             osSendMesg(sClients[i].msgQ, (OSMesg)&sRetraceMsg, OS_MESG_NOBLOCK);
@@ -128,6 +134,14 @@ void portSchedPump(void)
     sInPump = 1;
 
     portPlatformPoll();
+
+    /* PORT_DETERMINISTIC: virtual time advances exactly one retrace period
+     * per pump, making every derived clock (osGetCount, audio budget,
+     * retrace/poll counts) a pure function of the pump count — headless
+     * runs become bit-reproducible and run flat out (the sleep branch
+     * below can never be taken: `now` always lands on the deadline). */
+    portTimeVirtualStep(RETRACE_NS);
+
     portTimersService();
     schedDrainTasks();
 

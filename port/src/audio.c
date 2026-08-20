@@ -190,7 +190,12 @@ void portAudioFrame(void)
     target = (u32)(sFrameSize * 3) * 4; /* bytes: stereo s16 */
 
     for (guard = 0;
-         guard < 4 && sTotalSamples < budget && SDL_GetQueuedAudioSize(sDev) < target;
+         guard < 4 && sTotalSamples < budget
+         /* PORT_DETERMINISTIC: the SDL queue drains on a realtime thread,
+          * so gating on its depth couples synthesis interleaving to the
+          * wall clock; under the virtual clock the budget alone paces
+          * (and the queue is not fed — see below). */
+         && (portTimeVirtualActive() || SDL_GetQueuedAudioSize(sDev) < target);
          guard++) {
         s32 cmdLen = 0;
         s32 n = sFrameSize;
@@ -199,7 +204,11 @@ void portAudioFrame(void)
             n = sizeof(buf) / 4;
         }
         alAudioFrame(cmds, &cmdLen, (s16 *)buf, n);
-        SDL_QueueAudio(sDev, buf, (u32)n * 4);
+        if (!portTimeVirtualActive()) {
+            SDL_QueueAudio(sDev, buf, (u32)n * 4); /* virtual runs outpace
+                                                      realtime drain — the
+                                                      queue would balloon */
+        }
         sTotalSamples += (u64)n;
 
         {

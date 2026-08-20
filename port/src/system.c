@@ -91,3 +91,35 @@ int osGetenv_port_dbg_attackvis(void)
     }
     return v;
 }
+
+/* --- virtual clock (PORT_DETERMINISTIC=1, roadmap phase 2) -----------------
+ * When active, portPlatformTimeNs() returns a virtual timestamp that
+ * advances by exactly one retrace period per portSchedPump() call (and by
+ * the requested amount on sleeps) instead of reading the wall clock. Every
+ * derived clock — osGetCount/osGetTime, the audio synthesis budget, the
+ * autostart poll counter's cadence — becomes a pure function of the
+ * retrace count, so headless runs are bit-reproducible and run flat out
+ * (no real sleeping). Headless use only: pair with SDL_AUDIODRIVER=dummy
+ * (the real audio queue is wall-clock-paced). */
+static long long sVirtualNs = -2; /* -2 = unchecked, -1 = real clock */
+
+int portTimeVirtualActive(void)
+{
+    if (sVirtualNs == -2) {
+        const char *env = getenv("PORT_DETERMINISTIC");
+        sVirtualNs = (env != NULL && env[0] != '0') ? 0 : -1;
+    }
+    return sVirtualNs >= 0;
+}
+
+unsigned long long portTimeVirtualNow(void)
+{
+    return (unsigned long long)sVirtualNs;
+}
+
+void portTimeVirtualStep(unsigned long long ns)
+{
+    if (portTimeVirtualActive()) {
+        sVirtualNs += (long long)ns;
+    }
+}

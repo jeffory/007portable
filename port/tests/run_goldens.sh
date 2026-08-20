@@ -1,24 +1,27 @@
 #!/usr/bin/env bash
-# Phase-0 golden regression suite (see the Portable Roadmap).
+# Golden regression suite (Portable Roadmap phases 0+2).
 #
 #   port/tests/run_goldens.sh            check against pinned goldens
 #   port/tests/run_goldens.sh capture    (re)write the goldens
 #
 # Needs: the ROM at data/ge007.u.z64, a built binary (BIN, default
 # build-port/ge007-port), Xvfb + llvmpipe for headless rendering.
-# Goldens live in port/tests/goldens/ and are pinned against THIS machine's
-# Mesa; frame comparisons are tolerance-based so minor rasterizer drift
-# warns before it fails.
 #
-# What it covers:
+# Everything runs under PORT_DETERMINISTIC=1 (virtual clock: one retrace
+# per sched pump), so runs are BIT-REPRODUCIBLE and flat out — the whole
+# suite takes seconds. All comparisons are exact:
+#
 #   selftest  ROM sha1, romCopy, 1172 inflate, 18 compiled-in AI array CRCs
-#   boot      natural boot to the GoldenEye logo: every preprocess CRC
-#             (text banks, ctl/seq audio banks, image tables, logo models),
-#             two exact-ish golden frames (legal screen, N64 logo anim),
-#             audio spectral profile of the boot music
-#   dam       --stage dam: bg/stan/setup/model/briefing preprocess CRCs,
-#             one settled in-game frame (fuzzy: gameplay RNG is not yet
-#             deterministic - phase 2)
+#   boot      natural boot: every preprocess CRC, three exact frames
+#             (legal screen, logo anim x2), exact PCM of the boot music
+#   dam       --stage dam + PORT_AUTOSTART (cinema skip): every preprocess
+#             CRC (lazy model loads included), one exact in-game frame,
+#             gameplay STATEHASHes at ticks 600/1200/1800
+#
+# Frame pixels depend on this machine's Mesa/llvmpipe (goldens/CAPTURED_WITH
+# records it); CRC streams, PCM and STATEHASHes are renderer-independent.
+# On a frame mismatch the script reports the histogram distance (imgdiff
+# --hist) to separate rasterizer drift (~0.00x) from real breakage.
 set -u
 cd "$(dirname "$0")/../.."
 
@@ -35,7 +38,6 @@ bad()  { echo "!! $*"; FAIL=1; }
 [ -x "$BIN" ] || { echo "no binary at $BIN (set BIN=...)"; exit 2; }
 [ -f data/ge007.u.z64 ] || { echo "no ROM at data/ge007.u.z64"; exit 2; }
 
-# headless display: reuse $DISPLAY if set, else spawn Xvfb
 if [ -z "${DISPLAY:-}" ]; then
     Xvfb :98 -screen 0 1280x1024x24 &>/dev/null &
     XVFB_PID=$!
@@ -43,11 +45,20 @@ if [ -z "${DISPLAY:-}" ]; then
     sleep 1
 fi
 export LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=x11
-export PORT_NO_GAMEPAD=1
+export PORT_NO_GAMEPAD=1 PORT_DETERMINISTIC=1
 
-run() { # run <timeout> <args...>  (golden env is set by the caller)
+run() { # run <timeout> <args...>  (golden env set by the caller)
     local secs=$1; shift
     timeout "$secs" "$BIN" "$@" >"$T/stdout.log" 2>"$T/stderr.log"
+}
+
+cmpfile() { # cmpfile <golden> <got> <label> [ppm]
+    if ! cmp -s "$1" "$2"; then
+        bad "$3 drifted"
+        if [ "${4:-}" = ppm ] && [ -f "$1" ] && [ -f "$2" ]; then
+            python3 port/tests/imgdiff.py --hist "$1" "$2" 0 2>/dev/null | sed 's/^/   /'
+        fi
+    fi
 }
 
 # ---- selftest ---------------------------------------------------------------
@@ -57,40 +68,30 @@ grep -q "selftest: PASS" "$T/stderr.log" || bad "selftest did not PASS"
 grep "^CRCTRACE ai:" "$T/self.txt" > "$T/self_ai.txt" || true
 
 # ---- natural boot to the GE logo -------------------------------------------
-note "boot capture (~40s)"
+note "boot (deterministic)"
 PORT_CRC_TRACE=$T/boot.txt PORT_AUDIO_DUMP=$T/boot.pcm \
 PORT_FRAME_DUMP=$T PORT_FRAME_DUMP_AT=120,400,500 PORT_FRAME_DUMP_EXIT=1 \
     run 180
 [ -f "$T/frame_00500.ppm" ] || bad "boot: frame dump did not complete"
+md5sum < "$T/boot.pcm" | awk '{print $1}' > "$T/boot_pcm.md5"
 
 # ---- dam stage ---------------------------------------------------------------
-# Two dam runs: the CRC capture stays on the untouched cinema boot (its
-# asset-load sequence is deterministic), while the golden FRAME needs
-# PORT_AUTOSTART to skip into the static first-person spawn view - but
-# autostart makes the lazy model-load ORDER timing-dependent, so its CRC
-# stream is not comparable.
-note "dam CRC capture (~30s)"
-mkdir -p "$T/damc_"
-PORT_CRC_TRACE=$T/dam.txt \
-PORT_FRAME_DUMP=$T/damc_ PORT_FRAME_DUMP_AT=600 PORT_FRAME_DUMP_EXIT=1 \
-    run 240 --stage dam
-[ -f "$T/damc_/frame_00600.ppm" ] || bad "dam: CRC run did not complete"
-
-note "dam frame capture (~30s)"
+note "dam (deterministic, autostart)"
 mkdir -p "$T/dam_"
-PORT_AUTOSTART=1 \
+PORT_CRC_TRACE=$T/dam.txt PORT_AUTOSTART=1 \
+PORT_STATE_HASH=600,1200,1800 \
 PORT_FRAME_DUMP=$T/dam_ PORT_FRAME_DUMP_AT=900 PORT_FRAME_DUMP_EXIT=1 \
     run 240 --stage dam
 [ -f "$T/dam_/frame_00900.ppm" ] || bad "dam: frame dump did not complete"
+grep "^STATEHASH" "$T/stderr.log" > "$T/dam_statehash.txt" || true
 
 if [ "$MODE" = capture ]; then
     mkdir -p "$GOLD"
     cp "$T/self_ai.txt"          "$GOLD/selftest_crc.txt"
     cp "$T/boot.txt"             "$GOLD/boot_crc.txt"
-    # model loads during the dam cinema are lazy (on-screen-triggered) and
-    # their order/set shifts with frame pacing; pin only the deterministic
-    # lines (bg/stan/setup/ctl/text/briefing...). Boot pins model CRCs.
-    grep -v "^CRCTRACE model:" "$T/dam.txt" > "$GOLD/dam_crc.txt"
+    cp "$T/dam.txt"              "$GOLD/dam_crc.txt"
+    cp "$T/boot_pcm.md5"         "$GOLD/boot_pcm.md5"
+    cp "$T/dam_statehash.txt"    "$GOLD/dam_statehash.txt"
     cp "$T/frame_00120.ppm"      "$GOLD/boot_frame_00120.ppm"
     cp "$T/frame_00400.ppm"      "$GOLD/boot_frame_00400.ppm"
     cp "$T/frame_00500.ppm"      "$GOLD/boot_frame_00500.ppm"
@@ -102,29 +103,20 @@ if [ "$MODE" = capture ]; then
     exit 0
 fi
 
-# ---- compare -----------------------------------------------------------------
-note "compare CRC streams"
-diff -u "$GOLD/selftest_crc.txt" "$T/self_ai.txt"  || bad "selftest AI CRCs drifted"
-diff -u "$GOLD/boot_crc.txt"     "$T/boot.txt"     || bad "boot preprocess CRCs drifted"
-grep -v "^CRCTRACE model:" "$T/dam.txt" > "$T/dam_filtered.txt"
-diff -u "$GOLD/dam_crc.txt"      "$T/dam_filtered.txt" || bad "dam preprocess CRCs drifted"
+# ---- compare (all exact) -----------------------------------------------------
+note "compare"
+diff -u "$GOLD/selftest_crc.txt"  "$T/self_ai.txt"       || bad "selftest AI CRCs drifted"
+diff -u "$GOLD/boot_crc.txt"      "$T/boot.txt"          || bad "boot preprocess CRCs drifted"
+diff -u "$GOLD/dam_crc.txt"       "$T/dam.txt"           || bad "dam preprocess CRCs drifted"
+diff -u "$GOLD/dam_statehash.txt" "$T/dam_statehash.txt" || bad "dam gameplay STATEHASH drifted"
+cmpfile "$GOLD/boot_pcm.md5"      "$T/boot_pcm.md5"         "boot music PCM"
+cmpfile "$GOLD/boot_frame_00120.ppm" "$T/frame_00120.ppm"   "legal screen frame"      ppm
+cmpfile "$GOLD/boot_frame_00400.ppm" "$T/frame_00400.ppm"   "logo frame 400"          ppm
+cmpfile "$GOLD/boot_frame_00500.ppm" "$T/frame_00500.ppm"   "logo frame 500"          ppm
+cmpfile "$GOLD/dam_frame_00900.ppm"  "$T/dam_/frame_00900.ppm" "dam in-game frame"    ppm
 
-note "compare frames"
-# The legal screen is static -> strict pixel compare. Frames 400/500 sit
-# inside the logo flythrough and the dam frame after the autostart cinema
-# skip: their exact animation phase shifts with machine load (no
-# deterministic clock until phase 2), so they use the histogram metric
-# (calibrated: same scene jitters <=0.06, different scenes >=0.18).
-python3 port/tests/imgdiff.py "$GOLD/boot_frame_00120.ppm" "$T/frame_00120.ppm" 0.001 \
-    || bad "legal screen frame drifted"
-python3 port/tests/imgdiff.py --hist "$GOLD/boot_frame_00400.ppm" "$T/frame_00400.ppm" 0.12 \
-    || bad "logo animation frame drifted"
-python3 port/tests/imgdiff.py --hist "$GOLD/boot_frame_00500.ppm" "$T/frame_00500.ppm" 0.12 \
-    || bad "boot frame 500 drifted"
-python3 port/tests/imgdiff.py --hist "$GOLD/dam_frame_00900.ppm" "$T/dam_/frame_00900.ppm" 0.12 \
-    || bad "dam in-game frame drifted"
-
-note "audio profile"
+# tolerant spectral check kept as a sanity net (catches a whine even if the
+# exact goldens were just re-pinned wrong)
 python3 port/tests/pcmcheck.py "$T/boot.pcm" "$GOLD/audio_profile.txt" \
     || bad "boot music spectral profile drifted"
 

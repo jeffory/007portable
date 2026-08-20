@@ -123,24 +123,31 @@ preprocess. Debug helpers: `PORT_AUTOSTART=1` (synthetic
 START presses), `PORT_LOAD_TRACE`, `PORT_MDL_TRACE`, `PORT_VTX_DUMP`
 with `PORT_DUMP_AFTER=<seconds>`.
 
-## Testing (phase-0 goldens)
+## Testing (golden suite, deterministic)
 
 `port/tests/run_goldens.sh` runs the golden regression suite headlessly
-(Xvfb + llvmpipe; needs the ROM): `--selftest` plus AI-array CRCs, a
-natural boot to the GoldenEye logo, and `--stage dam`. It pins every
-asset-preprocess CRC (`PORT_CRC_TRACE=<file|1>` prints `CRCTRACE` lines at
-each byteswap site), four golden frames (`PORT_FRAME_DUMP=<dir>` +
-`PORT_FRAME_DUMP_AT=n[,n...]` + `PORT_FRAME_DUMP_EXIT=1` write PPMs of the
-finished backbuffer), and a spectral profile of the boot music (RMS,
-silence fraction, energy at the historic 2756 Hz mixer-whine bin). Boot
-frames are bit-stable run to run; the in-mission frame uses a 2.5%
-tolerance until the deterministic clock lands (phase 2). Re-pin with
-`run_goldens.sh capture` — only after intentionally changing output, and
-note goldens are tied to this machine's Mesa/llvmpipe version
-(`goldens/CAPTURED_WITH.txt`).
+(Xvfb + llvmpipe; needs the ROM) in ~30s. Everything runs under
+**`PORT_DETERMINISTIC=1`**: a virtual clock advances exactly one retrace
+period per scheduler pump, so runs are bit-reproducible and execute flat
+out (no real-time pacing). Every comparison is exact: asset-preprocess
+CRCs (`PORT_CRC_TRACE=<file|1>`), golden frames (`PORT_FRAME_DUMP=<dir>`
++ `PORT_FRAME_DUMP_AT=n[,n...]` + `PORT_FRAME_DUMP_EXIT=1`), the boot
+music PCM byte-for-byte, and gameplay state hashes
+(`PORT_STATE_HASH=<tick>[,tick...]` prints a CRC of the RNG seed, Bond's
+position/view and every chr's action+position; `PORT_STATE_HASH_EXIT=1`
+exits after the last one).
 
-Run it before every push; phase 1 (the N64-code removal) must keep it
-green throughout.
+Input sessions can be recorded and replayed at the pad level:
+`PORT_INPUT_RECORD=<file>` captures the final pad values of every poll
+(all sources merged — keyboard, `PORT_AUTOSTART`, gamepad),
+`PORT_INPUT_REPLAY=<file>` feeds them back in place of all input. Under
+the deterministic clock a replayed session reproduces the exact same
+state hashes.
+
+Re-pin with `run_goldens.sh capture` — only after intentionally changing
+output. Frame goldens are tied to this machine's Mesa/llvmpipe
+(`goldens/CAPTURED_WITH.txt`); CRC/PCM/state-hash goldens are
+renderer-independent. Run the suite before every push.
 
 ## Building (Fedora)
 

@@ -71,12 +71,20 @@ void portPlatformPoll(void)
 
 void portPlatformSleepMs(u32 ms)
 {
+    if (portTimeVirtualActive()) {
+        portTimeVirtualStep((u64)ms * 1000000ull);
+        return;
+    }
     SDL_Delay(ms);
 }
 
 u64 portPlatformTimeNs(void)
 {
     static Uint64 sFreq;
+
+    if (portTimeVirtualActive()) {
+        return portTimeVirtualNow();
+    }
 
     if (sFreq == 0) {
         sFreq = SDL_GetPerformanceFrequency();

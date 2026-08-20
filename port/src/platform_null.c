@@ -24,6 +24,10 @@ void portPlatformSleepMs(u32 ms)
 {
     struct timespec ts;
 
+    if (portTimeVirtualActive()) {
+        portTimeVirtualStep((u64)ms * 1000000ull);
+        return;
+    }
     ts.tv_sec = ms / 1000;
     ts.tv_nsec = (long)(ms % 1000) * 1000000L;
     nanosleep(&ts, 0);
@@ -33,6 +37,9 @@ u64 portPlatformTimeNs(void)
 {
     struct timespec ts;
 
+    if (portTimeVirtualActive()) {
+        return portTimeVirtualNow();
+    }
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (u64)ts.tv_sec * 1000000000ull + (u64)ts.tv_nsec;
 }

@@ -444,6 +444,37 @@ void portInputInit(void)
     }
 }
 
+/* PORT_INPUT_RECORD=<file>: append the FINAL pad values of every poll
+ * (all sources merged — keyboard, autostart, gamepad), for
+ * PORT_INPUT_REPLAY. Big-endian button so the stream is arch-portable.
+ * Called from every portInputRead exit path. */
+static void inputRecordPads(const OSContPad *pads)
+{
+    static FILE *rec;
+    static int recChecked;
+    s32 i;
+
+    if (!recChecked) {
+        const char *p = getenv("PORT_INPUT_RECORD");
+        recChecked = 1;
+        if (p != NULL) {
+            rec = fopen(p, "wb");
+        }
+    }
+    if (rec == NULL) {
+        return;
+    }
+    for (i = 0; i < MAXCONTROLLERS; i++) {
+        u8 out[4];
+        out[0] = (u8)(pads[i].button >> 8);
+        out[1] = (u8)pads[i].button;
+        out[2] = (u8)pads[i].stick_x;
+        out[3] = (u8)pads[i].stick_y;
+        fwrite(out, 1, 4, rec);
+    }
+    fflush(rec);
+}
+
 void portInputRead(OSContPad *pads)
 {
     const Uint8 *keys = SDL_GetKeyboardState(NULL);
@@ -452,6 +483,41 @@ void portInputRead(OSContPad *pads)
     s32 y = 0;
 
     memset(pads, 0, sizeof(OSContPad) * MAXCONTROLLERS);
+
+    /* PORT_INPUT_REPLAY=<file>: feed back a PORT_INPUT_RECORD stream in
+     * place of every input source (keyboard, autostart, gamepad). One
+     * record per poll: MAXCONTROLLERS x {u16 button; s8 x; s8 y}. Under
+     * PORT_DETERMINISTIC the poll sequence is a pure function of the
+     * retrace count, so a recorded session replays exactly. Past EOF the
+     * pads stay released. */
+    {
+        static FILE *rp;
+        static int rpChecked;
+
+        if (!rpChecked) {
+            const char *p = getenv("PORT_INPUT_REPLAY");
+            rpChecked = 1;
+            if (p != NULL) {
+                rp = fopen(p, "rb");
+                if (rp == NULL) {
+                    fprintf(stderr, "port/input: cannot open replay %s\n", p);
+                    exit(2);
+                }
+            }
+        }
+        if (rp != NULL) {
+            s32 i;
+            for (i = 0; i < MAXCONTROLLERS; i++) {
+                u8 rec[4];
+                if (fread(rec, 1, 4, rp) == 4) {
+                    pads[i].button = (u16)((rec[0] << 8) | rec[1]);
+                    pads[i].stick_x = (s8)rec[2];
+                    pads[i].stick_y = (s8)rec[3];
+                }
+            }
+            return;
+        }
+    }
 
     /* PORT_AUTOSTART: headless testing aid — synthesize START presses at
      * fixed poll counts to drive through intro/menus deterministically */
@@ -470,6 +536,7 @@ void portInputRead(OSContPad *pads)
              (polls >= 4500 && polls < 4505) ||
              (polls >= 6000 && polls < 6005))) {
             pads[0].button = START_BUTTON;
+            inputRecordPads(pads);
             return;
         }
     }
@@ -696,4 +763,6 @@ void portInputRead(OSContPad *pads)
                     buttons, pads[0].stick_x, pads[0].stick_y, sMouseGrabbed);
         }
     }
+
+    inputRecordPads(pads);
 }
