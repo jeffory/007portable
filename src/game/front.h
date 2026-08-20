@@ -297,8 +297,8 @@ extern s32 is_cheat_menu_available;
 extern u8 * ptr_logo_and_walletbond_DL;
 extern s32 ptr_menu_videobuffer;
 extern  Model * walletinst[];
-extern Lights1 gelogolight;
-extern Lights1 ninlogolight;
+extern Lights1 *gelogolight;  /* low-alloc'd (PIE/Android): in Gfx words */
+extern Lights1 *ninlogolight;
 
 extern f32 slider_007_mode_reaction;
 extern f32 slider_007_mode_health;

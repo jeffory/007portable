@@ -21,3 +21,6 @@ void portVideoProcessTask(OSScTask *task)
         fprintf(stderr, "port/video: task %u, %u Gfx cmds\n", sTasksSeen, numCmds);
     }
 }
+
+void portVideoMakeCurrent(void) {}
+void portVideoReleaseCurrent(void) {}

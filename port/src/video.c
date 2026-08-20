@@ -160,3 +160,16 @@ notyet:;
         gfx_dbg_tris_in = gfx_dbg_tris_out = gfx_dbg_vtx = gfx_dbg_mtx = 0;
     }
 }
+
+/* Android: re-bind the GL context on the game pthread (see main.c) */
+void gfx_sdl_make_current(void);
+void portVideoMakeCurrent(void)
+{
+    gfx_sdl_make_current();
+}
+
+void gfx_sdl_release_current(void);
+void portVideoReleaseCurrent(void)
+{
+    gfx_sdl_release_current();
+}

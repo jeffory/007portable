@@ -321,7 +321,9 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
     append_line(vs_buf, &vs_len, "    gl_Position = aVtxPos;");
     if (!GLAD_GL_ARB_depth_clamp) {
         // HACK: workaround for no GL_DEPTH_CLAMP
-        append_line(vs_buf, &vs_len, "    gl_Position.z *= 0.3f;");
+        /* no 'f' suffix: the Android emulator's GLES translator rejects it
+         * in '300 es' shaders even though the spec allows it */
+        append_line(vs_buf, &vs_len, "    gl_Position.z *= 0.3;");
     }
     append_line(vs_buf, &vs_len, "}");
 

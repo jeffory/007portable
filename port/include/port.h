@@ -119,6 +119,9 @@ void portAudioFrame(void);
 void portAudioPump(void);
 void portIntMaskInit(void); /* arm osSetIntMask as a real lock (misc.c) */
 
+void portVideoMakeCurrent(void);    /* bind GL on the calling thread (video.c) */
+void portVideoReleaseCurrent(void); /* unbind it (EGL: one thread at a time) */
+
 /* --- file locations (paths.c) ----------------------------------------------
  * "<base>/<name>": base is PORT_DATA_DIR, else ./data if it exists
  * (portable layout), else the per-user SDL pref dir (installed layout). */

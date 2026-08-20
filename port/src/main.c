@@ -164,6 +164,16 @@ static void applyStageOverride(void)
 }
 
 #ifdef __ANDROID__
+#include <pthread.h>
+
+static void *portAndroidGameThread(void *arg)
+{
+    (void)arg;
+    portVideoMakeCurrent();
+    bossEntry(); /* never returns */
+    return NULL;
+}
+
 /* SDLActivity loads libmain.so and calls the exported SDL_main */
 #define main SDL_main
 int SDL_main(int argc, char **argv);
@@ -172,6 +182,17 @@ int SDL_main(int argc, char **argv);
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IOLBF, 0); /* keep printf diagnostics when killed */
+
+#ifdef __ANDROID__
+    /* Android discards native stdio; keep the port's stderr diagnostics
+     * (ROM errors, preprocess logs) somewhere a person can read them */
+    {
+        static char logpath[1024];
+        if (freopen(portPathFile(logpath, sizeof(logpath), "stderr.log"), "w", stderr) != NULL) {
+            setvbuf(stderr, NULL, _IONBF, 0);
+        }
+    }
+#endif
 
     parseArgs(argc, argv);
 
@@ -252,20 +273,28 @@ int main(int argc, char **argv)
         __asm__ volatile("mov %0, %%rsp\n\tcall *%1"
                          : : "r"(top), "r"(bossEntry) : "memory");
         __builtin_unreachable();
-#elif defined(__ANDROID__) && defined(__aarch64__)
-        /* bionic has no ucontext either; same one-way pivot, aarch64 */
+#elif defined(__ANDROID__)
+        /* No asm pivot here: ART validates SP against the thread's
+         * registered stack on every JNI call (SDL's Android event pump
+         * makes them), and a stack it doesn't know about is an instant
+         * StackOverflowError abort. Instead the game runs on a real
+         * pthread whose stack is placed in low memory — properly
+         * registered with bionic/ART, same u32-truncation guarantee.
+         * The GL context was created on this (SDL_main) thread, so the
+         * game thread re-binds it before bossEntry renders. */
+        pthread_attr_t attr;
+        pthread_t gameThread;
         u32 stackSize = 16 * 1024 * 1024;
         u8 *stack = portLowAlloc(stackSize);
-        void *top;
 
-        if (stack == NULL) {
+        portVideoReleaseCurrent(); /* EGL: current on one thread at a time */
+        if (stack == NULL || pthread_attr_init(&attr) != 0
+            || pthread_attr_setstack(&attr, stack, stackSize) != 0
+            || pthread_create(&gameThread, &attr, portAndroidGameThread, NULL) != 0) {
             fprintf(stderr, "port: failed to set up low-memory game stack\n");
             return 1;
         }
-        top = (void *)(((uintptr_t)(stack + stackSize - 64)) & ~(uintptr_t)15);
-        __asm__ volatile("mov sp, %0\n\tblr %1"
-                         : : "r"(top), "r"(bossEntry) : "memory");
-        __builtin_unreachable();
+        pthread_join(gameThread, NULL); /* bossEntry never returns */
 #else
         static ucontext_t mainCtx, bossCtx;
         u32 stackSize = 16 * 1024 * 1024;

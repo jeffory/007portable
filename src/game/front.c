@@ -315,17 +315,32 @@ s32 ptr_menu_videobuffer = 0;
 struct Model *logoinst = NULL;
 struct Model * walletinst[] = { NULL, NULL, NULL, NULL};
 
-Lights1 gelogolight = gdSPDefLights1(
+/* PORT: DL-referenced Lights1 must live below 4GB (Gfx words are 32-bit);
+ * as statics they sit in the PIE/APK image, which loads high. Lazily
+ * copied into portLowAlloc'd storage at the gSPLight sites. */
+static Lights1 sGelogolightInit = gdSPDefLights1(
     0x96, 0x96, 0x96,
     0xFF, 0xFF, 0xFF,
     77, 77, 46
 );
 
-Lights1 ninlogolight = gdSPDefLights1(
+static Lights1 sNinlogolightInit = gdSPDefLights1(
     0xFF, 0xFF, 0xFF,
     0x00, 0x00, 0x00,
     0, 0, 0
 );
+
+Lights1 *gelogolight;
+Lights1 *ninlogolight;
+
+static Lights1 *frontLowLight(Lights1 **slot, const Lights1 *init)
+{
+    if (*slot == NULL) {
+        *slot = portLowAlloc(sizeof(Lights1));
+        **slot = *init;
+    }
+    return *slot;
+}
 
 
 f32 slider_007_mode_reaction = 0.0f;
@@ -1679,10 +1694,11 @@ Gfx *constructor_menu01_nintendo(Gfx *DL)
 
     DL = clear_framebuffer_black(DL);
 
+    frontLowLight(&ninlogolight, &sNinlogolightInit);
     // Lights macro? These need to be on one line.
     gSPNumLights(DL++, 1); \
-    gSPLight(DL++, &ninlogolight.l[0], 1); \
-    gSPLight(DL++, &ninlogolight, 2);
+    gSPLight(DL++, &ninlogolight->l[0], 1); \
+    gSPLight(DL++, ninlogolight, 2);
 
 #if defined(VERSION_EU)
     // 0x100000000 ? 0xFFFECD34 = 0x132CC (78540 decimal)
@@ -1700,12 +1716,12 @@ Gfx *constructor_menu01_nintendo(Gfx *DL)
         ambiantlight = 0;
     }
 
-    ninlogolight.a.l.colc[2] = ambiantlight;
-    ninlogolight.a.l.colc[1] = ambiantlight;
-    ninlogolight.a.l.colc[0] = ambiantlight;
-    ninlogolight.a.l.col[2] = ambiantlight;
-    ninlogolight.a.l.col[1] = ambiantlight;
-    ninlogolight.a.l.col[0] = ambiantlight;
+    ninlogolight->a.l.colc[2] = ambiantlight;
+    ninlogolight->a.l.colc[1] = ambiantlight;
+    ninlogolight->a.l.colc[0] = ambiantlight;
+    ninlogolight->a.l.col[2] = ambiantlight;
+    ninlogolight->a.l.col[1] = ambiantlight;
+    ninlogolight->a.l.col[0] = ambiantlight;
 
 #if defined(VERSION_EU)
     ninLogoRotRate += 0.0209439527243f;
@@ -1958,10 +1974,11 @@ Gfx *constructor_menu04_goldeneyelogo(Gfx *DL)
     logoLookAt = (LookAt *)dynAllocateLights(2);
     guLookAtReflect(&logoReflectMtx, logoLookAt, 0.0f, 0.0f, 4000.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
 
+    frontLowLight(&gelogolight, &sGelogolightInit);
     // Lights macro? These need to be on one line.
     gSPNumLights(DL++, 1); \
-    gSPLight(DL++, &gelogolight.l[0], 1); \
-    gSPLight(DL++, &gelogolight, 2);
+    gSPLight(DL++, &gelogolight->l[0], 1); \
+    gSPLight(DL++, gelogolight, 2);
 
     // gSPLookAt macro expands to gSPLookAtX + gSPLookAtY
     gSPLookAt(DL++, logoLookAt);
@@ -8080,10 +8097,11 @@ Gfx *constructor_menu18_displaycast(Gfx *DL)
  
     guLookAtReflect(&lookatmtx, (LookAt *)light, 0.0f, 0.0f, 4000.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
  
+    frontLowLight(&gelogolight, &sGelogolightInit);
     gSPNumLights(DL++, 1); \
-    gSPLight(DL++, &gelogolight.l[0], 1); \
-    gSPLight(DL++, &gelogolight, 2);
- 
+    gSPLight(DL++, &gelogolight->l[0], 1); \
+    gSPLight(DL++, gelogolight, 2);
+
     gSPLookAt(DL++, light);
  
     modelTickAnim(cast_model, g_ClockTimer, 1);

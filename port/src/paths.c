@@ -46,14 +46,12 @@ static const char *portPathBase(void)
         sBase = strdup(env);
         return sBase;
     }
-    if (isDir("data")) {
-        sBase = "data";
-        return sBase;
-    }
 #if defined(GE_HAVE_SDL2) && defined(__ANDROID__)
+    /* app-scoped external storage (/sdcard/Android/data/<pkg>/files):
+     * reachable with adb push / a file manager, unlike the pref path.
+     * MUST come before the ./data probe: an Android app's cwd is "/",
+     * where "data" matches the unwritable system /data directory. */
     {
-        /* app-scoped external storage (/sdcard/Android/data/<pkg>/files):
-         * reachable with adb push / a file manager, unlike the pref path */
         const char *ext = SDL_AndroidGetExternalStoragePath();
         if (ext != NULL) {
             sBase = strdup(ext);
@@ -61,6 +59,10 @@ static const char *portPathBase(void)
         }
     }
 #endif
+    if (isDir("data")) {
+        sBase = "data";
+        return sBase;
+    }
 #ifdef GE_HAVE_SDL2
     {
         /* SDL creates the directory; returned path has a trailing

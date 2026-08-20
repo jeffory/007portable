@@ -484,3 +484,22 @@ struct GfxWindowManagerAPI gfx_sdl = {
     gfx_sdl_get_swap_interval,
     gfx_sdl_set_swap_interval,
 };
+
+/* PORT (Android): the game runs on its own pthread (low-memory stack);
+ * the GL context created above on the SDL_main thread must be re-bound
+ * on the game thread before it renders. */
+extern "C" void gfx_sdl_make_current(void) {
+    if (wnd != nullptr && ctx != nullptr) {
+        SDL_GL_MakeCurrent(wnd, ctx);
+    }
+}
+
+/* PORT (Android): the main thread must drop the context before the game
+ * thread can bind it — EGL allows a context to be current on one thread
+ * at a time (MakeCurrent elsewhere fails with EGL_BAD_ACCESS and every
+ * subsequent GL call silently no-ops). */
+extern "C" void gfx_sdl_release_current(void) {
+    if (wnd != nullptr) {
+        SDL_GL_MakeCurrent(wnd, nullptr);
+    }
+}
