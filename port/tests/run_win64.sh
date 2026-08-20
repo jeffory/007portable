@@ -23,7 +23,16 @@ fi
 
 RUN="podman run --rm -v $PWD:/work:z -w /work $IMG"
 
-$RUN bash -c "cmake -B build-win64 -G Ninja --toolchain port/cmake/mingw64-toolchain.cmake >/dev/null && ninja -C build-win64 && cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/SDL2.dll build-win64/"
+$RUN bash -c "cmake -B build-win64 -G Ninja --toolchain port/cmake/mingw64-toolchain.cmake >/dev/null && ninja -C build-win64 && cp -u /usr/x86_64-w64-mingw32/sys-root/mingw/bin/libwinpthread-1.dll build-win64/"
+
+# Ship the OFFICIAL libsdl.org SDL2.dll: Fedora's mingw64-SDL2 build
+# deadlocks the loader under Wine 11 (loader_section hang before main —
+# reproduced with a plain hello-world linking it). The official build is
+# fine, and real Windows may work with either.
+if [ ! -f build-win64/SDL2.dll ] || [ "$(stat -c%s build-win64/SDL2.dll)" -lt 1000000 ]; then
+    curl -sL https://github.com/libsdl-org/SDL/releases/download/release-2.30.9/SDL2-2.30.9-win32-x64.zip -o build-win64/sdl-official.zip
+    (cd build-win64 && unzip -o -q sdl-official.zip SDL2.dll && rm sdl-official.zip)
+fi
 
 if [ "${1:-}" = build ]; then
     exit 0
@@ -31,11 +40,9 @@ fi
 
 [ -f data/ge007.u.z64 ] || { echo "no ROM at data/ge007.u.z64"; exit 2; }
 
-echo "== win64 selftest (wine)"
-# KNOWN ISSUE: wine-core hangs inside rootless podman on this machine
-# (wineserver never comes up); run the selftest on a real Windows box or
-# a host wine install instead:
-#   wine build-win64/ge007-port.exe --selftest
-$RUN bash -c "export WINEDEBUG=-all WINEPREFIX=/tmp/wine HOME=/tmp; timeout -s KILL 300 wine build-win64/ge007-port.exe --selftest 2>&1 | tail -2" | grep -q PASS \
-    && echo "WIN64: PASS" || echo "WIN64: wine smoke inconclusive (see note above); the exe builds"
+echo "== win64 selftest (host wine)"
+# wine-core inside rootless podman hangs; the HOST wine works fine.
+export WINEPREFIX="${WINEPREFIX:-$HOME/.cache/ge007-wine}" WINEDEBUG=-all
+timeout -s KILL 300 wine build-win64/ge007-port.exe --selftest 2>&1 | tail -1 | grep -q PASS \
+    && echo "WIN64: PASS" || { echo "WIN64: FAIL"; exit 1; }
 
