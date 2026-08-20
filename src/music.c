@@ -4,6 +4,14 @@
 #include "audi.h"
 #include <bondconstants.h>
 #include "decompress.h"
+#include <platform_info.h>
+
+/* Huffman workspace for the CMIDI decompresses below. Rare passed a
+ * SINGLE 8-byte `struct huft` from the stack as the whole table —
+ * zlib_huft_build writes up to ~0x2100 bytes of entries through it
+ * (every other decompressdata caller passes an 0x2100 buffer), silently
+ * shredding the caller frame on N64 and crashing under -O2 frames. */
+static u8 sMusicHuftBuf[DOUBLE_SIZE_ON_64_BIT(0x2100)];
 #include "dyn.h"
 #include "memp.h"
 #include "music.h"
@@ -802,7 +810,6 @@ void musicTrack1Play(s32 track)
     u8 *temp_a0;
     void *romAddress;
     u32 t3;
-    struct huft hlist;
 
     if (g_sndBootswitchSound)
     {
@@ -840,7 +847,7 @@ void musicTrack1Play(s32 track)
     temp_a0 = (u8*)((t3 + (s32)thing.seqData) - trackSizeBytes);
 
     romCopy(temp_a0, romAddress, trackSizeBytes);
-    decompressdata(temp_a0, thing.seqData, &hlist);
+    decompressdata(temp_a0, thing.seqData, (struct huft *)sMusicHuftBuf);
     portSwapCMidiHdr(thing.seqData); /* PORT_PREPROCESS */
 
     alCSeqNew(&g_musicXTrack1Seq, g_musicXTrack1SeqData);
@@ -1001,7 +1008,6 @@ void musicTrack2Play(s32 track)
     u8 *temp_a0;
     void *romAddress;
     u32 t3;
-    struct huft hlist;
 
     if (g_sndBootswitchSound)
     {
@@ -1037,7 +1043,7 @@ void musicTrack2Play(s32 track)
     temp_a0 = (u8*)((t3 + (s32)thing.seqData) - trackSizeBytes);
 
     romCopy(temp_a0, romAddress, trackSizeBytes);
-    decompressdata(temp_a0, thing.seqData, &hlist);
+    decompressdata(temp_a0, thing.seqData, (struct huft *)sMusicHuftBuf);
     portSwapCMidiHdr(thing.seqData); /* PORT_PREPROCESS */
 
     alCSeqNew(&g_musicXTrack2Seq, g_musicXTrack2SeqData);
@@ -1198,7 +1204,6 @@ void musicTrack3Play(s32 track)
     u8 *temp_a0;
     void *romAddress;
     u32 t3;
-    struct huft hlist;
 
     if (g_sndBootswitchSound)
     {
@@ -1234,7 +1239,7 @@ void musicTrack3Play(s32 track)
     temp_a0 = (u8*)((t3 + (s32)thing.seqData) - trackSizeBytes);
 
     romCopy(temp_a0, romAddress, trackSizeBytes);
-    decompressdata(temp_a0, thing.seqData, &hlist);
+    decompressdata(temp_a0, thing.seqData, (struct huft *)sMusicHuftBuf);
     portSwapCMidiHdr(thing.seqData); /* PORT_PREPROCESS */
 
     alCSeqNew(&g_musicXTrack3Seq, g_musicXTrack3SeqData);

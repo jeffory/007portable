@@ -31,8 +31,16 @@ set(CMAKE_CXX_STANDARD 20)        # fast3d (uses operator<=>)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(NOT CMAKE_BUILD_TYPE)
-  set(CMAKE_BUILD_TYPE Debug)  # -O0 -g until M3; IDO-shaped code + heavy opts = tarpit
+  # -O2 -g is the tested configuration (goldens are pinned against it).
+  # The two -O2 landmines found so far (front.c uninitialized read,
+  # music.c undersized huft table) are fixed; -fwrapv and
+  # -fno-strict-aliasing below keep the deadliest UB classes defanged.
+  set(CMAKE_BUILD_TYPE RelWithDebInfo)
 endif()
+
+# Keep float results comparable across x86/ARM (no fused multiply-add
+# contraction) — cross-arch goldens depend on it.
+add_compile_options(-ffp-contract=off)
 
 # ---------------------------------------------------------------------------
 # Platform backend: SDL2 when devel headers are present, headless null

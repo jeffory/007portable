@@ -1513,7 +1513,11 @@ Gfx *constructor_menu00_legalscreen(Gfx *DL)
     
     DL = clear_framebuffer_black(DL);
     
-    matrix_4x4_set_lookat_target(&lookatmtx, 0.0f, 0.0f, 4000.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, legal_text_ptr->v_pos * 0.0f);
+    /* Rare passed `legal_text_ptr->v_pos * 0.0f` here with legal_text_ptr
+     * still UNINITIALIZED — always 0.0f in practice (x*0), and IDO's frame
+     * layout made the stray read harmless; under -O2 the dead read
+     * segfaults. Pass the intended constant. */
+    matrix_4x4_set_lookat_target(&lookatmtx, 0.0f, 0.0f, 4000.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f);
     
     renderdata.basemtx = &lookatmtx;
     renderdata.mtxlist = (Mtxf *) dynAllocate(logoinst->obj->numMatrices << 6);

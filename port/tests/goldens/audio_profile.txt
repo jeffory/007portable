@@ -1,4 +1,4 @@
 seconds=8.0
-rms=3369.2
-nonzero_frac=0.4611
-tone_ratio=8.933793601825284e-06
+rms=3355.7
+nonzero_frac=0.455
+tone_ratio=9.453586350573839e-06
