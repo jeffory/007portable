@@ -6049,6 +6049,38 @@ void bondviewProcessInput(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
         }
     }
 
+#ifndef TARGET_N64
+    /* PORT: scrollwheel weapon cycling + number-key direct select, injected
+     * beside the native A-button cycle so the same gating applies. Always
+     * consume so gated-off frames (pause, cinema, MP flag carrier) don't
+     * bank up switches. */
+    {
+        extern s32 portInputConsumeWeaponScroll(void);
+        extern s32 portInputConsumeWeaponSelect(void);
+        s32 scroll = portInputConsumeWeaponScroll();
+        s32 slot = portInputConsumeWeaponSelect();
+
+        if (canCycleWeapons
+            && g_CurrentPlayer->pause_state == 0
+            && g_CurrentPlayer->cameramode == 0)
+        {
+            for (; scroll > 0; scroll--)
+            {
+                advance_through_inventory();
+            }
+            for (; scroll < 0; scroll++)
+            {
+                backstep_through_inventory();
+            }
+
+            if (slot > 0)
+            {
+                select_weapon_slot(slot);
+            }
+        }
+    }
+#endif
+
     if (moveData.canSwivelGun)
     {
         g_CurrentPlayer->controldef = CONTROLLER_CONFIG_HONEY;

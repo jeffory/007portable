@@ -32,7 +32,11 @@ aim mode always uses the stick path so the crosshair tracks the mouse).
 WASD moves, LMB fires, RMB aims, R
 reloads (GE's B action, so it also opens doors), Space also fires,
 X/F = A, C = B, Enter = Start, Q/E = shoulder buttons, arrows = analog
-stick, IJKL = raw C buttons. With mouselook off the game runs its stock
+stick, IJKL = raw C buttons. The scrollwheel cycles weapons (up = next,
+down = previous; `]`/`[` do the same) and number keys 1–9/0 direct-select
+weapon slots 1–10 — a slot is the Nth stop of the native A-button cycle
+(held weapons in ascending weapon-id order), and an empty slot does
+nothing. With mouselook off the game runs its stock
 1.1 control style and WASD drives the analog stick (tank-style, like the
 N64). Gamepads work via SDL_GameController with hotplug.
 

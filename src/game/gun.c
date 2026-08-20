@@ -1095,6 +1095,48 @@ void backstep_through_inventory(void)
     gunRequestHandWeaponChange(GUNLEFT, nextleft, -1);
 }
 
+#ifndef TARGET_N64
+/**
+ * PORT: direct-select the Nth weapon in the inventory cycle (1-based).
+ *
+ * Walks the same ordering the native A-button cycle uses — ascending
+ * (right, left) weapon-id pairs via bondinvCycleForward, all-guns cheat
+ * included — so slot N is the Nth stop of advance_through_inventory.
+ * Does nothing if fewer than N weapons are held, or while a hand holds a
+ * non-cycleable item (bomb case, flag), matching the cycle guard above.
+ */
+void select_weapon_slot(s32 slot)
+{
+    s32 right = ITEM_UNARMED;
+    s32 left = ITEM_UNARMED;
+    s32 prevright;
+    s32 prevleft;
+    s32 i;
+
+    if ((get_next_weapon_in_cycle_for_hand(GUNRIGHT, 1) >= ITEM_BOMBCASE) || (get_next_weapon_in_cycle_for_hand(GUNLEFT, 1) >= ITEM_BOMBCASE))
+    {
+        return;
+    }
+
+    for (i = 0; i < slot; i++)
+    {
+        prevright = right;
+        prevleft = left;
+        bondinvCycleForward(&right, &left, FALSE);
+
+        /* the ordering is strictly ascending, so a non-increase means the
+         * cycle wrapped: the slot is empty */
+        if ((right < prevright) || ((right == prevright) && (left <= prevleft)))
+        {
+            return;
+        }
+    }
+
+    gunRequestHandWeaponChange(GUNRIGHT, right, 0);
+    gunRequestHandWeaponChange(GUNLEFT, left, 0);
+}
+#endif
+
 void autoadvance_on_deplete_all_ammo(void)
 {
 	ITEM_IDS nextright;

@@ -376,6 +376,9 @@ void camera_sniper_zoom_out(f32 zoom);
 f32 get_item_in_hand_zoom(void);
 void advance_through_inventory(void);
 void backstep_through_inventory(void);
+#ifndef TARGET_N64
+void select_weapon_slot(s32 slot); /* PORT: Nth stop of the weapon cycle, 1-based */
+#endif
 void gunSetAimType(s32 param_1);
 void sub_GAME_7F067FBC(f32 turn_x, f32 turn_y);
 void gunTickGameplay(s32 arg0);

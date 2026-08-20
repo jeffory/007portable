@@ -29,3 +29,13 @@ s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta)
     (void)dverta;
     return 0;
 }
+
+s32 portInputConsumeWeaponScroll(void)
+{
+    return 0;
+}
+
+s32 portInputConsumeWeaponSelect(void)
+{
+    return 0;
+}

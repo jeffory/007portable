@@ -71,6 +71,55 @@ s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta)
     return 1;
 }
 
+/* PC-style weapon switching: the scrollwheel (and weapon_next/weapon_prev
+ * keys) accumulate cycle steps, the number keys latch a 1-based inventory
+ * slot. bondviewProcessInput consumes both each tick and drives the native
+ * cycle (advance/backstep_through_inventory, select_weapon_slot). */
+#define WEAPON_SCROLL_CAP 5 /* bound what banks up while switching is gated */
+
+static s32 sWeaponScroll;
+static s32 sWeaponSelect;
+
+s32 portInputConsumeWeaponScroll(void)
+{
+    s32 v = sWeaponScroll;
+
+    sWeaponScroll = 0;
+    return v;
+}
+
+s32 portInputConsumeWeaponSelect(void)
+{
+    s32 v = sWeaponSelect;
+
+    sWeaponSelect = 0;
+    return v;
+}
+
+/* Event watch: SDL_MOUSEWHEEL has no polled state and the port has two
+ * competing SDL_PollEvent loops (portPlatformPoll, fast3d's
+ * gfx_sdl_handle_events); a watch sees every event no matter which loop
+ * drains it. The port is single-threaded (see sched.c), so plain statics
+ * are safe. */
+static int inputEventWatch(void *userdata, SDL_Event *ev)
+{
+    (void)userdata;
+
+    if (ev->type == SDL_MOUSEWHEEL && sMouseGrabbed) {
+        s32 y = ev->wheel.y;
+
+#if SDL_VERSION_ATLEAST(2, 0, 4)
+        if (ev->wheel.direction == SDL_MOUSEWHEEL_FLIPPED) {
+            y = -y;
+        }
+#endif
+        sWeaponScroll += y; /* wheel up = next weapon */
+        if (sWeaponScroll >  WEAPON_SCROLL_CAP) sWeaponScroll =  WEAPON_SCROLL_CAP;
+        if (sWeaponScroll < -WEAPON_SCROLL_CAP) sWeaponScroll = -WEAPON_SCROLL_CAP;
+    }
+    return 0;
+}
+
 /* ---- configurable keybindings ---------------------------------------------
  * Loaded from $PORT_INPUT_CONFIG, else $XDG_CONFIG_HOME/ge007/input.ini,
  * else ~/.config/ge007/input.ini. A commented default file is written on
@@ -86,6 +135,9 @@ enum {
     IN_C_UP, IN_C_DOWN, IN_C_LEFT, IN_C_RIGHT,    /* raw C buttons */
     IN_STICK_UP, IN_STICK_DOWN, IN_STICK_LEFT, IN_STICK_RIGHT,
     IN_GRAB_TOGGLE,
+    IN_WEAPON_NEXT, IN_WEAPON_PREV,               /* cycle (scrollwheel also) */
+    IN_WEAPON1, IN_WEAPON2, IN_WEAPON3, IN_WEAPON4, IN_WEAPON5,
+    IN_WEAPON6, IN_WEAPON7, IN_WEAPON8, IN_WEAPON9, IN_WEAPON10,
     IN_COUNT
 };
 
@@ -96,6 +148,9 @@ static const char *const sActionNames[IN_COUNT] = {
     "c_up", "c_down", "c_left", "c_right",
     "stick_up", "stick_down", "stick_left", "stick_right",
     "grab_toggle",
+    "weapon_next", "weapon_prev",
+    "weapon1", "weapon2", "weapon3", "weapon4", "weapon5",
+    "weapon6", "weapon7", "weapon8", "weapon9", "weapon10",
 };
 
 static const char *const sActionHelp[IN_COUNT] = {
@@ -110,6 +165,13 @@ static const char *const sActionHelp[IN_COUNT] = {
     "analog stick up (raw)", "analog stick down (raw)",
     "analog stick left (raw)", "analog stick right (raw)",
     "toggle the mouselook grab",
+    "next weapon (scrollwheel up always works)",
+    "previous weapon (scrollwheel down always works)",
+    "select weapon slot 1", "select weapon slot 2",
+    "select weapon slot 3", "select weapon slot 4",
+    "select weapon slot 5", "select weapon slot 6",
+    "select weapon slot 7", "select weapon slot 8",
+    "select weapon slot 9", "select weapon slot 10",
 };
 
 static const char *const sDefaultBindings[IN_COUNT] = {
@@ -119,6 +181,9 @@ static const char *const sDefaultBindings[IN_COUNT] = {
     "I", "K", "J", "L",
     "Up", "Down", "Left", "Right",
     "F1",
+    "]", "[",
+    "1", "2", "3", "4", "5",
+    "6", "7", "8", "9", "0",
 };
 
 static struct {
@@ -354,6 +419,8 @@ void portInputInit(void)
 
     bindLoad(); /* keybindings + mouse settings; env vars below override */
 
+    SDL_AddEventWatch(inputEventWatch, NULL); /* scrollwheel -> weapon cycle */
+
     {
         /* Mouselook defaults ON (PORT_MOUSELOOK=0 disables): the mouse
          * drives the stick (turn/look), WASD moves via the forced 1.2
@@ -533,6 +600,29 @@ void portInputRead(OSContPad *pads)
         if (actionDown(keys, mb, IN_C_DOWN))    buttons |= D_CBUTTONS;
         if (actionDown(keys, mb, IN_C_LEFT))    buttons |= L_CBUTTONS;
         if (actionDown(keys, mb, IN_C_RIGHT))   buttons |= R_CBUTTONS;
+
+        /* weapon switching (edge-triggered): number keys latch a slot,
+         * weapon_next/weapon_prev add cycle steps like the scrollwheel */
+        {
+            static Uint16 prevWeaponKeys;
+            Uint16 cur = 0;
+            int i;
+
+            for (i = 0; i < 10; i++) {
+                if (actionDown(keys, mb, IN_WEAPON1 + i)) cur |= 1 << i;
+            }
+            if (actionDown(keys, mb, IN_WEAPON_NEXT)) cur |= 1 << 10;
+            if (actionDown(keys, mb, IN_WEAPON_PREV)) cur |= 1 << 11;
+
+            for (i = 0; i < 10; i++) {
+                if ((cur & (1 << i)) && !(prevWeaponKeys & (1 << i))) {
+                    sWeaponSelect = i + 1;
+                }
+            }
+            if ((cur & (1 << 10)) && !(prevWeaponKeys & (1 << 10)) && sWeaponScroll <  WEAPON_SCROLL_CAP) sWeaponScroll++;
+            if ((cur & (1 << 11)) && !(prevWeaponKeys & (1 << 11)) && sWeaponScroll > -WEAPON_SCROLL_CAP) sWeaponScroll--;
+            prevWeaponKeys = cur;
+        }
 
         /* forward/back/left/right always mean "move", whatever moves in the
          * active style:

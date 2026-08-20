@@ -59,6 +59,8 @@ void portSwapBriefingData(void *data);
 /* input (port/src/input_sdl.c) */
 void portInputSetAimMode(s32 aiming);
 s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta);
+s32 portInputConsumeWeaponScroll(void);      /* wheel/keys: +n cycle fwd, -n back */
+s32 portInputConsumeWeaponSelect(void);      /* 1-based weapon slot, 0 = none */
 void portSwapGlobalImagetable(void *data, u32 size);
 void portSwapRarewareLogo(void *data, u32 size);
 void portSwapAnimHeader(void *header, void *blobBase);
