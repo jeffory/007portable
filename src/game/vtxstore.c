@@ -153,13 +153,16 @@ void sub_GAME_7F09BAC4(s32 find, s32 replacement) {
     var_s1 = chrpropGetActiveTail();
     while (var_s1 != NULL) {
         if (var_s1->type == 1) {
-            var_v0 = var_s1->chr;
-            var_v1 = ((Model*)var_v0->chrflags)->obj;
+            /* type-1 props carry an ObjectRecord in .chr; the decomp read
+             * its model pointer through ChrRecord.chrflags (same 0x14
+             * offset on 32-bit, half a pointer on 64-bit) */
+            ObjectRecord *obj = (ObjectRecord *)var_s1->chr;
+            var_v1 = obj->model->obj;
             var_a1 = var_v1->RootNode;
             while (var_a1 != NULL) {
                 val = var_a1->Opcode & 0xFF;
                 if (val == 0x18) {
-                    temp_v0_2 = modelGetNodeRwData(var_v0->chrflags, var_a1);
+                    temp_v0_2 = modelGetNodeRwData(obj->model, var_a1);
                     if (find == *temp_v0_2) {
                         *temp_v0_2 = replacement;
                     }

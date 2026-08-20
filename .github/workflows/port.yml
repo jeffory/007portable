@@ -63,3 +63,18 @@ jobs:
 
       - name: Build
         run: ninja -C build
+
+  build-arm64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: aarch64 cross toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Configure
+        run: cmake -B build-arm64 -G Ninja --toolchain port/cmake/aarch64-toolchain.cmake
+
+      - name: Build
+        run: ninja -C build-arm64
+        # ROM-gated qemu smoke tests run locally: port/tests/run_arm64.sh

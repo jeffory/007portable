@@ -794,6 +794,7 @@ struct anim_group_info *ptr_doubles_firing_animation_groups[] = {
 
 struct weapon_firing_animation_table crouched_rifle_firing_animation_group1[] = {
     { PTR_ANIM_fire_kneel_right_leg, 27.0, 0, 0, 0, -1.0, 35.0, 75.0, -1.0, -1.0, 31.0, 75.0, 0.87266463, -0.69813174, 0.90757126, -0.69813174, 1.5, 1.5 },
+    {0, 0.0, 0, 0, 0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0} /* sentinel: was missing — the walk terminated on x86's inter-symbol padding by luck */
 };
 
 struct weapon_firing_animation_table crouched_rifle_firing_animation_groupA[] = {

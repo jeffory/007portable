@@ -9813,7 +9813,7 @@ void sub_GAME_7F04F244(PropRecord* prop, rect4f** polygon, s32* edges, f32* top,
 }
 
 
-void append_text_picked_up(u8 *buffer,u8 * param2,u8 * param3)
+void append_text_picked_up(u8 *buffer, AMMOTYPE ammotype, u32 quantity) /* unused args; were mistyped u8* */
 {
   u8 *str;
 
