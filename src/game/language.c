@@ -1,9 +1,7 @@
 #include <ultra64.h>
 #include <bondgame.h>
 #include <memp.h>
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 #include "language.h"
 #include "ob.h"
 
@@ -253,14 +251,12 @@ void langInit(void) {
     g_LangBanks[LOPTIONS] = _fileNameLoadToBank(LnameX_lookuptable[LOPTIONS][j_text_trigger], FILELOADMETHOD_DEFAULT, 0x100, MEMPOOL_PERMANENT);
     g_LangBanks[LMISC] = _fileNameLoadToBank(LnameX_lookuptable[LMISC][j_text_trigger], FILELOADMETHOD_DEFAULT, 0x100, MEMPOOL_PERMANENT);
 
-#ifndef TARGET_N64
     // PORT_PREPROCESS: text banks carry a BE u32 offset table at the front
     for (i = 0; i < 45; i++) {
         if (g_LangBanks[i] != 0) {
             portSwapTextBank((u32 *)g_LangBanks[i]);
         }
     }
-#endif
 }
 
 
@@ -296,11 +292,9 @@ struct jpncharpixels *langGetJpnCharPixels(s32 codepoint)
 	s32 freeindexmulti = -1;
 	s32 multibyte = 0;
 
-#ifndef TARGET_N64
 	if (g_JpnCacheCacheItems == NULL || g_JpnCharCachePixels == NULL) { // PORT: cache only exists on JPN builds
 		return NULL;
 	}
-#endif
 
 	if (codepoint & 0x2000) {
 		multibyte = 1;
@@ -371,18 +365,14 @@ struct jpncharpixels *langGetJpnCharPixels(s32 codepoint)
 void langLoadToAddr(u32 id)
 {
     g_LangBanks[id] = _fileNameLoadToBank(LnameX_lookuptable[id][j_text_trigger],1,0x100,MEMPOOL_STAGE);
-#ifndef TARGET_N64
     portSwapTextBank((u32 *)g_LangBanks[id]); // PORT_PREPROCESS
-#endif
 }
 
 
 void langLoadToBank(int id,u8 *target,int size)
 {
     g_LangBanks[id] = _fileNameLoadToAddr(LnameX_lookuptable[id][j_text_trigger],1,target,size);
-#ifndef TARGET_N64
     portSwapTextBank((u32 *)g_LangBanks[id]); // PORT_PREPROCESS
-#endif
 }
 
 
@@ -397,17 +387,6 @@ void langClearBank(s32 textBank) {
  */
 u8 * langGet(s32 slotID)
 {
-#ifdef TARGET_N64
-    u32 * textbank_ptr = g_LangBanks[slotID >> 10]; /* get the text file bank ID index the text ptr table */
-    u32 textslot_offset = textbank_ptr[slotID & 0x03FF]; /* load the textbank ptr table then get the slot's offset */
-
-    u32 output_slot = textslot_offset; /* add the text slot offset to the base ptr to get the ptr to text file's slot */
-    output_slot += (u32)textbank_ptr;
-    #ifdef DEBUG
-    return (textslot_offset != 0) ? (u8 *)output_slot : "Sorry, string not loaded.";
-    #endif
-    return (textslot_offset != 0) ? (u8*)output_slot : NULL;
-#else
     /* PC: guard out-of-range ids and unloaded banks so a bad text id
      * degrades into the callers' existing NULL ("no text") paths instead of
      * dereferencing a NULL bank pointer. */
@@ -429,5 +408,4 @@ u8 * langGet(s32 slotID)
     output_slot = textslot_offset;
     output_slot += (u32)textbank_ptr;
     return (textslot_offset != 0) ? (u8*)output_slot : NULL;
-#endif
 }

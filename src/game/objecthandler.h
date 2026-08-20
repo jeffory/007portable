@@ -16,7 +16,6 @@ struct bondstruct_unk_op07_related {
     s32 unk0C;
 };
 
-#ifndef TARGET_N64
 /*
  * PC: both slot structs are Model overlays in disguise (the game casts
  * &g_ModelSlots[i] to Model*), with the unkXX names encoding 32-bit
@@ -51,7 +50,6 @@ struct ModelSlot {
 };
 
 #define GE_SLOT_STRUCTS_DEFINED
-#endif
 
 #ifndef GE_SLOT_STRUCTS_DEFINED
 struct AnimModelSlot {

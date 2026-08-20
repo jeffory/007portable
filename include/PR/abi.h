@@ -404,7 +404,7 @@ typedef short ENVMIX_STATE[40];
 
 #endif /* _LANGUAGE_C */
 
-#if !defined(TARGET_N64) && defined(_LANGUAGE_C)
+#ifdef _LANGUAGE_C
 /* PC port: replace the Acmd-emitting macros with direct calls into the
  * software mixer (port/src/mixer.c), so the libultra audio drivers do the
  * DSP work immediately instead of building an RSP task. */

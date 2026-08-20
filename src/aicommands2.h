@@ -291,16 +291,11 @@
   @exception: AI_LIST_ID Must NOT be a BG List (10XX)
               THIS must be defined for this function to be able to return
 ******************************************************************************/
-#ifdef TARGET_N64
-#define CALL(AI_LIST_ID)  \
-                                  IF_ELSE (  DEFINED (  THIS )                     )  (  AI_ERR_NO_THIS   )  (  (                    SetReturnAiList(THIS)SetChrAiList(CHR_SELF, (!isBGAIListID(AI_LIST_ID) && isSubroutine(AI_LIST_ID) ? AI_LIST_ID : AI_ERR_NOTSUB)) )  )  ,
-#else
 /* Same as above minus the final ',': the inner SetChrAiList already emits a
    trailing comma, and GCC rejects the resulting empty initializer element
    (IDO silently swallowed it). */
 #define CALL(AI_LIST_ID)  \
                                   IF_ELSE (  DEFINED (  THIS )                     )  (  AI_ERR_NO_THIS   )  (  (                    SetReturnAiList(THIS)SetChrAiList(CHR_SELF, (!isBGAIListID(AI_LIST_ID) && isSubroutine(AI_LIST_ID) ? AI_LIST_ID : AI_ERR_NOTSUB)) )  )
-#endif
 
 
 

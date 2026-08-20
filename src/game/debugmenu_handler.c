@@ -5,11 +5,7 @@
 #include <fr.h>
 
 #ifndef DEBUG
-    #ifdef TARGET_N64
-        #define osSyncPrintf()
-    #else
         #define osSyncPrintf(...)
-    #endif
 #endif
 #if defined(LEFTOVERDEBUG)
 

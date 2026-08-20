@@ -36,11 +36,7 @@ s32 file_entry_max = OBJ_INDEX_END;
 void load_resource(u8 *ptrdata, s32 bytes,  fileentry *srcfile,  resource_lookup_data_entry *lookupdata)
 {
     u8 *source;
-#ifdef TARGET_N64
-    u8  buffer[0x2100];
-#else
     u8  buffer[DOUBLE_SIZE_ON_64_BIT(0x2100)]; /* huft entries double on 64-bit */
-#endif
     s32 unused;
 
 
@@ -78,11 +74,7 @@ void load_resource(u8 *ptrdata, s32 bytes,  fileentry *srcfile,  resource_lookup
 void resource_load_from_indy(u8 *ptrdata, s32 bytes,  fileentry *srcfile,  resource_lookup_data_entry *lookupdata)
 {
     u8 *pPayload;
-#ifdef TARGET_N64
-    u8 buffer[8448];
-#else
     u8 buffer[DOUBLE_SIZE_ON_64_BIT(8448)]; /* huft entries double on 64-bit */
-#endif
     s32 size;
     static const u8 rz_header_1[] = {0x11, 0x72, 0x00, 0x00};
     static const u8 rz_header_2[] = {0x11, 0x72, 0x00, 0x00};

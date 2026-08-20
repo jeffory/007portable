@@ -808,11 +808,7 @@ s32 texLoadFromGdl(Gfx *src, s32 srcsize, Gfx *dst, void *texpool)
 
     while (count > 0)
     {
-#ifdef TARGET_N64
-        switch (*(u8 *)in) /* opcode = first byte on big-endian */
-#else
         switch (in->words.w0 >> 24)
-#endif
         {
             case G_NOOP:
                 if (!syncEmitted)

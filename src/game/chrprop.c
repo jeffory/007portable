@@ -467,17 +467,11 @@ Gfx *chrpropsRenderPass(Gfx *gdl, s32 roomid, s32 renderpass)
     s32 i;
     s32* rp;
     s32 unused2;
-#ifdef TARGET_N64
-    s32 sp48[PROPRECORD_STAN_ROOM_LEN];
-    s32 unused3;
-    s32 unused4;
-#else
     /* chraiGetPropRoomIds writes up to 8 entries (prop->rooms[] spills into
      * the adjacent word by design, and the room updater commits up to 7 +
      * terminator). On IDO the overflow landed in the unused slots below;
      * GCC lays the frame out differently, so size the buffer honestly. */
     s32 sp48[8];
-#endif
 
     if (bossGetStageNum() == LEVELID_CUBA)
     {
@@ -497,14 +491,12 @@ Gfx *chrpropsRenderPass(Gfx *gdl, s32 roomid, s32 renderpass)
         {
             prop = *pp;
 
-#ifndef TARGET_N64
             if ((u32)prop >= 0xFF000000u)
             {
                 osSyncPrintf("port/warn: bad onscreen prop %p at idx %d (count %d, room %d, pass %d)\n",
                              prop, (s32)(pp - g_OnScreenPropList), g_OnScreenPropCount, roomid, renderpass);
                 continue;
             }
-#endif
 
             if (prop != NULL)
             {
@@ -2012,13 +2004,9 @@ void chraiGetPropRoomIds(PropRecord *self, s32 *roomids)
     }
     else
     {
-#ifdef TARGET_N64
-        for (i=0; self->rooms[i] != 0xff; i++)
-#else
         /* bound the scan: rooms[] + its designed spill hold at most 7
          * entries before the 0xff terminator */
         for (i=0; i < 7 && self->rooms[i] != 0xff; i++)
-#endif
         {
             roomids[i] = self->rooms[i];
         }
@@ -2931,13 +2919,9 @@ void chrpropUpdateRoomList(PropRecord *prop, coord3d *bbmin, coord3d *bbmax, f32
             src = prop->rooms;
         }
 
-#ifdef TARGET_N64
-        for (i = 0; src[i] != 0xff; i++) {
-#else
         /* bound the copy: rooms[] holds 7 and an unterminated source list
          * (e.g. an uninitialized projectile room list) must not overflow */
         for (i = 0; i < 7 && src[i] != 0xff; i++) {
-#endif
             rooms[i] = src[i];
         }
 

@@ -25,14 +25,8 @@ extern "C" {
 
 #ident "$Revision: 1.4 $"
 
-#ifdef TARGET_N64
-extern void    bcopy(const void *, void *, int);
-extern int    bcmp(const void *, const void *, int);
-extern void    bzero(void *, int);
-#else
 /* PC port: host prototypes (size_t) to avoid conflicts with strings.h */
 #include <strings.h>
-#endif
 
 #ifdef __cplusplus
 }

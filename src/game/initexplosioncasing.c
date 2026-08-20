@@ -4,11 +4,7 @@
 #include "explosion.h"
 
 #ifndef DEBUG
-    #ifdef TARGET_N64
-        #define osSyncPrintf()
-    #else
         #define osSyncPrintf(...)
-    #endif
 #endif
 
 void alloc_explosion_smoke_casing_scorch_impact_buffers(void)

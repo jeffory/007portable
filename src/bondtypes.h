@@ -27,7 +27,7 @@
 #include <ultra64.h>
 #include <bondconstants.h>
 #include "snd.h"
-#if !defined(AIPARSE) && defined(TARGET_N64)
+#if 0 /* was: !AIPARSE && TARGET_N64 */
     #include "game/chrobjdata.h"
 #endif
 
@@ -47,23 +47,12 @@
  * to scale by 4 because pointers are 4 bytes; on 64-bit hosts the scaling
  * must stay 4, not 8.
  */
-#ifdef TARGET_N64
-#define MODEL_RWDATA_AT(base, index) (&(base)[index])
-#else
 #define MODEL_RWDATA_AT(base, index) ((void *)((u8 *)(base) + (u32)(index) * 4u))
-#endif
 
-#ifdef TARGET_N64
-#define monword u32
-#define smonword s32
-#define MONWORDVAL(x) x
-#define MONWORDPTR(p) p
-#else
 typedef uintptr_t monword;
 typedef intptr_t smonword;
 #define MONWORDVAL(x) ((monword)(smonword)(s32)(u32)(x))
 #define MONWORDPTR(p) ((monword)(uintptr_t)(p))
-#endif
 
         /**
  * Syntax Sugar for clarification of intent
@@ -279,30 +268,11 @@ typedef union
             f32 f[3];
         };
     } coord3d;
-#ifdef TARGET_N64
-#define New_Coord3d(x, y, z)            \
-    {                                   \
-        IF_ELSE(IS_EMPTY(x))            \
-        (0)(x),                         \
-            IF_ELSE(IS_EMPTY(y))(0)(y), \
-            IF_ELSE(IS_EMPTY(z))(0)(z)  \
-    }
-#else
 /* PC port: IDO tolerates calling this with missing args (New_Coord3d());
  * GCC does not. All in-tree uses are the zero-init form. */
 #define New_Coord3d(...) { 0, 0, 0 }
-#endif
     typedef coord3d vec3d; //canononical name
-#ifdef TARGET_N64
-#define New_Vector(x, y, z)        \
-    {                              \
-        IF_ELSE(IS_EMPTY(x))(0)(x),\
-        IF_ELSE(IS_EMPTY(y))(0)(y),\
-        IF_ELSE(IS_EMPTY(z))(0)(z) \
-    }
-#else
 #define New_Vector(...) { 0, 0, 0 }
-#endif
 
     /**
      16bit Co-Ordinate used for Integer co-ordinates eg, pumping straight to RSP.
@@ -445,24 +415,6 @@ typedef union
     /*
     unused struct for clarity of intent
     */
-#ifdef TARGET_N64
-    typedef struct StandTileHeaderMid
-    {
-        u16 special : 4;// 0=normal 1=kneeling 3=ladder
-        u16 r       : 4;
-        u16 g       : 4;
-        u16 b       : 4;
-    } StandTileHeaderMid;
-
-    typedef struct StandTileHeaderTail
-    {
-        s16 pointCount : 4; // seen lh, not lhu. Also seen with an explicit unnecessary '& 0xF'
-        // Indices of the most extreme points (the resulting triangle should encompass _MOST_ of the tile)
-        s16 headerC    : 4;
-        s16 headerD    : 4;
-        s16 headerE    : 4;
-    } StandTileHeaderTail;
-#else
     /* Little-endian hosts allocate bitfields LSB-first; declare in reverse
      * so .special/.pointCount stay the TOP nibble of the (byteswapped,
      * native-value) halfword, matching the explicit ".half >> 12" readers. */
@@ -481,7 +433,6 @@ typedef union
         s16 headerC    : 4;
         s16 pointCount : 4;
     } StandTileHeaderTail;
-#endif
 
     typedef struct StandTile
     {
@@ -643,12 +594,6 @@ typedef union
         u16 unk04; // number of frames in the animation
         u8 unk06;
         u8 unk07; // bit 0 is a loop flag: 0 means freeze anim at end, 1 means loop anim
-#ifdef TARGET_N64
-        ModelAnimBitField *bitDescriptors; // 0x08
-        u16 unk0C;
-        u16 unk0E;
-        u8  *bitStream; // 0x10
-#else
         /* PC: headers live packed inside the animation blob and are
          * addressed by hundreds of base+offset sites, so the struct must
          * keep its 32-bit layout even on 64-bit hosts. The two pointer
@@ -658,7 +603,6 @@ typedef union
         u16 unk0C;
         u16 unk0E;
         u32 bitStream; // 0x10
-#endif
         s32 unk14;
         s32 unk18;
         s32 unk1c;
@@ -763,18 +707,11 @@ typedef union
                 s16 t; /* 0xa */
             };
 
-#ifdef TARGET_N64
-            struct Vertex *LinkedTo;
-
-            /* Collision vertices only: points to related model node. */
-            void *CollisionRelatedNode; /* 0x8 */
-#else
             /* PC: Vertex doubles as the 16-byte RSP vertex, so it must
              * stay 16 bytes even on 64-bit hosts. These slots hold
              * truncated pointers (all game memory sits below 4GB). */
             u32 LinkedTo;
             u32 CollisionRelatedNode; /* 0x8 */
-#endif
         };
 
         union
@@ -3183,13 +3120,9 @@ typedef union
     typedef struct CCTVRecord
     {
         inherits ObjectRecord;
-#ifdef TARGET_N64
-        s32      pad; // lookpad
-#else
         /* GCC -fms-extensions rejects the collision with ObjectRecord.pad
          * that IDO tolerated; same size/offset, PC-only name */
         s32      cctv_pad; // lookpad
-#endif
         Mtxf     unk84;
         f32 unkC4;
         f32 unkC8;
@@ -3287,11 +3220,7 @@ typedef union
     //[This struct uses original names]
     typedef struct MonitorRecord
     {
-#ifdef TARGET_N64
-        u32 *cmdlist;   // 0x80	4	image pointer for this monitor
-#else
         monword *cmdlist; // 0x80 image pointer for this monitor (word-indexed by tvcmd interpreter)
-#endif
         u16 offset;     // 0x84	2	[runtime] cur. #commands from start of routine
         s16 pause60;    // 0x86	2	[runtime] loop counter
         struct sImageTableEntry *tconfig;      //0x88	4	[runtime] monitor image# or p->image header
@@ -4304,14 +4233,10 @@ struct fontchar {
     s32 height;
     s32 width;
     s32 kerningindex;
-#ifdef TARGET_N64
-    u8 *pixeldata;
-#else
     /* PC: font blobs are arrays of these 24-byte records used in place;
      * keep the 32-bit layout on 64-bit hosts (truncated pointer slot —
      * every consumer passes it by value into (void *)/gbi casts). */
     u32 pixeldata;
-#endif
 };
 
 struct font {
@@ -4319,7 +4244,7 @@ struct font {
 	struct fontchar chars[94]; // can be 135 in PAL
 };
 
-#if !defined(AIPARSE) && !defined(TARGET_N64)
+#ifndef AIPARSE
     /* PC port: included after the struct definitions because GCC rejects
      * extern arrays of still-incomplete struct types (IDO allowed them) */
     #include "game/chrobjdata.h"

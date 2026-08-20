@@ -828,7 +828,6 @@ char *setup_text_pointers[] = {
 
 
 
-#ifndef TARGET_N64
 /**
  * PORT (phase 0 goldens): the 18 built-in AI arrays with their compiled
  * sizes, so --selftest can CRC them against pinned values. The arrays were
@@ -862,4 +861,3 @@ const struct PortAiArray g_PortAiArrays[] = {
     {"m_RemoveSelf",               m_RemoveSelf,               sizeof(m_RemoveSelf)},
 };
 const int g_PortAiArrayCount = sizeof(g_PortAiArrays) / sizeof(g_PortAiArrays[0]);
-#endif /* !TARGET_N64 */

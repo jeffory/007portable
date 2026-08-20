@@ -1095,7 +1095,6 @@ void backstep_through_inventory(void)
     gunRequestHandWeaponChange(GUNLEFT, nextleft, -1);
 }
 
-#ifndef TARGET_N64
 /**
  * PORT: direct-select the Nth weapon in the inventory cycle (1-based).
  *
@@ -1135,7 +1134,6 @@ void select_weapon_slot(s32 slot)
     gunRequestHandWeaponChange(GUNRIGHT, right, 0);
     gunRequestHandWeaponChange(GUNLEFT, left, 0);
 }
-#endif
 
 void autoadvance_on_deplete_all_ammo(void)
 {

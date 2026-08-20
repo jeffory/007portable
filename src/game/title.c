@@ -1,7 +1,5 @@
 #include <ultra64.h>
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 #include <PR/gbi.h>
 #include <PR/gu.h>
 #include <PR/os.h>
@@ -381,11 +379,9 @@ void setupRarewareLogoData(s32 address, s32 size) {
     intro_eye_counter = 0;
     virtualaddress = address;
     romCopy(virtualaddress, &_rarewarelogoSegmentRomStart, ALIGN64_V2((u32)&_rarewarelogoSegmentEnd - (u32)&_rarewarelogoSegmentStart));
-#ifndef TARGET_N64
     // PORT_PREPROCESS: DLs/vertices in the rarewarelogo segment are BE
     portSwapRarewareLogo((void *)virtualaddress,
                          (u32)&_rarewarelogoSegmentEnd - (u32)&_rarewarelogoSegmentStart);
-#endif
 }
 
 
@@ -482,12 +478,8 @@ void initializeGunBarrelIntro(u8 *gfxBuffer, s32 bufferSize)
     bufferSize -= 0x100;
     gfxBuffer += 0x100;
     
-#ifdef TARGET_N64
-    sub_GAME_7F01BFF8(gunbarrelgfxListPointer, barrelDisplayListPtr + 0x80000000, 0x1E);
-#else
     /* the +0x80000000 is a KSEG0 wrap-to-physical trick */
     sub_GAME_7F01BFF8(gunbarrelgfxListPointer, barrelDisplayListPtr, 0x1E);
-#endif
     sub_GAME_7F008DE4((u8 **)&gfxBuffer, &bufferSize);
 
     // struct copy

@@ -1,8 +1,6 @@
 #include <ultra64.h>
 #include <memp.h>
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 #include "textrelated.h"
 #include "bondtypes.h"
 #include "game/language.h"
@@ -117,12 +115,10 @@ void load_font_tables(void)
 
 	romCopy(ptrFontBankGothic, (void *) &_fontbankgothicSegmentRomStart, len);
 
-#ifndef TARGET_N64
 	/* PORT_PREPROCESS: swap only the structured header (kerning +
 	 * fontchar table); the glyph pixel data that follows must keep
 	 * N64 byte order for the renderer's texture importers */
 	portSwapU32InPlace(ptrFontBankGothic, sizeof(struct font));
-#endif
 
     // Convert pointers
 	for (i = 0; i < 94; i++) {
@@ -135,12 +131,10 @@ void load_font_tables(void)
 
 	romCopy(ptrFontZurichBold, (void *) &_fontzurichboldSegmentRomStart, len);
 
-#ifndef TARGET_N64
 	/* PORT_PREPROCESS: swap only the structured header (kerning +
 	 * fontchar table); the glyph pixel data that follows must keep
 	 * N64 byte order for the renderer's texture importers */
 	portSwapU32InPlace(ptrFontZurichBold, sizeof(struct font));
-#endif
 
     // Convert pointers
 	for (i = 0; i < 94; i++) {
@@ -447,12 +441,10 @@ Gfx *textRender(Gfx *gdl, s32 *x, s32 *y, char *text,
 			sp74.index = codepoint + 0x80;
 			sp74.pixeldata = (void *)langGetJpnCharPixels(codepoint);
 
-#ifndef TARGET_N64
 			if (sp74.pixeldata == NULL) { // PORT: JPN glyph cache is never allocated on non-JPN builds
 				text += 2;
 				continue;
 			}
-#endif
 			gdl = textRenderGlyph(gdl, x, y, &sp74, &sp74, font, savedx, savedy, width, height, yOffset);
 
 			text += 2;
@@ -682,12 +674,10 @@ Gfx *textRenderOutlined(Gfx *gdl, s32 *x, s32 *y,
 			sp74.index = codepoint + 0x80;
 			sp74.pixeldata = (void *)langGetJpnCharPixels(codepoint);
 
-#ifndef TARGET_N64
 			if (sp74.pixeldata == NULL) { // PORT: JPN glyph cache is never allocated on non-JPN builds
 				text += 2;
 				continue;
 			}
-#endif
             // Render Japanese characters with outline.
             gdl = textRenderGlyphOutlined(gdl, x, y, &sp74, &sp74, font, savedx, savedy, colour, colour2, width, height, yOffset);
 

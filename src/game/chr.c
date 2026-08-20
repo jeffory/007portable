@@ -1174,19 +1174,12 @@ s32 get_numguards(void)
 }
 
 
-#ifdef TARGET_N64
-void get_ptr_allocated_block_for_vertices(int param_1)
-{
-  dynAllocate(param_1 << 4);
-}
-#else
 /* used as the model vtxallocator: on MIPS the dynAllocate result fell
  * through in $v0 despite the void return type; x86 needs it explicit */
 void *get_ptr_allocated_block_for_vertices(int param_1)
 {
   return (void *)dynAllocate(param_1 << 4);
 }
-#endif
 
 
 void set_show_patrols_flag(s32 flag)
@@ -2530,7 +2523,6 @@ after_position_update:
         chr->field_20 = NULL;
     }
 
-#ifndef TARGET_N64
     if (osGetenv_port_dbg_attackvis())
     {
         static u32 lastlog;
@@ -2542,7 +2534,6 @@ after_position_update:
                          prop->pos.x, prop->pos.y, prop->pos.z, headSwitchVisible);
         }
     }
-#endif
 
     if (headSwitchVisible)
     {

@@ -13,17 +13,10 @@ void cleanupObjects(s32 stage)
     
     if (obj)
     {
-#ifdef TARGET_N64
-        while ((u8)obj[0] != PROPDEF_END) /* type = low byte of the header word on big-endian */
-        {
-            switch ((u8)obj[0])
-            {
-#else
         while ((u8)(obj[0] >> 24) != PROPDEF_END) /* type = top byte on little-endian */
         {
             switch ((u8)(obj[0] >> 24))
             {
-#endif
                 case PROPDEF_DOOR:
                 case PROPDEF_PROP:
                 case PROPDEF_KEY:

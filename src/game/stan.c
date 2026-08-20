@@ -2115,13 +2115,9 @@ void getTileEdgePoints(StandTile *tile, s32 pointI, coord3d *currPntRtn, coord3d
 StanCollisionResult sub_GAME_7F0B1DDC(StandTile **startTile, f32 x, f32 z, f32 radius, standTileLocusCallback_A_t callbackA, standTileLocusCallback_B_t callbackB, standTileLocusCallback_C_t callbackC, struct StandTileLocusCallbackRecord *record)
 {
     s32 i;
-#ifdef TARGET_N64
-    StandTile *tileStack[39];
-#else
     /* pushes reach index 40 before the "cat >= 41" bound check; IDO's
      * frame absorbed the 2-slot overflow, GCC's locals live there */
     StandTile *tileStack[44];
-#endif
     StandTile *tile;
     StandTile *linkedTile;
     s32 visitedCount;
@@ -2380,25 +2376,12 @@ s32 stanTileDistanceRelated(StandTile **arg0, f32 arg1, f32 arg2, f32 arg3, stru
 {
     s32 i;
 
-#ifdef TARGET_N64
-    // HACK:
-    for(i=0;;)
-    {
-        ((s32*)arg4)[i+0] = 0;
-        ((s32*)arg4)[i+1] = 0;
-        ((s32*)arg4)[i+2] = 0;
-        ((s32*)arg4)[i+3] = 0;
-        i+=4;
-        if (i>15) break;
-    }
-#else
     /* the matching hack above zeroes 64 bytes through a 16-byte record;
      * callers only reserve the record (plus IDO frame slack) */
     for (i = 0; i < 4; i++)
     {
         ((s32*)arg4)[i] = 0;
     }
-#endif
 
     // maybe something like:
     /*

@@ -41,7 +41,7 @@ s32 g_DebugMenuTextStartX = 5;
 s32 g_DebugMenuTextStartY = 1;
 s32 g_DebugMenuTextCurrentX = 24;
 s32 g_DebugMenuTextCurrentY = 16;
-#if defined(TARGET_N64) || !IS_64_BIT
+#if !IS_64_BIT
 Gfx g_DebugMenuTextureDisplayList[] = {
     gsDPPipeSync(),
     gsDPSetCycleType(G_CYC_1CYCLE),

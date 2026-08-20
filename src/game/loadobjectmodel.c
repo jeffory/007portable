@@ -505,17 +505,10 @@ ObjectRecord *setupFindObjForReuse(s32 wanttype, ObjectRecord **offscreenobjptr,
 
     if (cmd)
     {
-#ifdef TARGET_N64
-        while ((u8)cmd[0] != PROPDEF_END) /* type = low byte of the header word on big-endian */
-        {
-            if ((wanttype & 0xff) == (u8)cmd[0])
-            {
-#else
         while ((u8)(cmd[0] >> 24) != PROPDEF_END) /* type = top byte on little-endian */
         {
             if ((wanttype & 0xff) == (u8)(cmd[0] >> 24))
             {
-#endif
                 ObjectRecord *obj = (ObjectRecord *)cmd;
 
                 if (obj->prop == NULL)

@@ -190,20 +190,12 @@ f32 g_SoloAmmoMultiplier = 1.0;
 
 extern struct ModelAnimation *animation_table_ptrs2[];
 
-#ifdef TARGET_N64
-struct tvcmd {
-    u32 type;
-    s32 time;
-    u32 arg2;
-};
-#else
 /* PC: overlays the monword bytecode stream (see bondtypes.h) */
 struct tvcmd {
     monword type;
     smonword time;
     monword arg2;
 };
-#endif
 
 // Forward declarations.
 
@@ -7282,11 +7274,7 @@ void sub_GAME_7F04AC20(PropRecord *prop, ModelRenderData *mrData, s32 arg2)
 
                 if (nodedata != NULL)
                 {
-#ifdef TARGET_N64
-                    rwdataSlot = &obj->model->datas[nodedata->DisplayListCollisions.RwDataIndex];
-#else
                     rwdataSlot = MODEL_RWDATA_AT(obj->model->datas, nodedata->DisplayListCollisions.RwDataIndex);
-#endif
 
                     if (nodedata->DisplayListCollisions.Vertices != (Vertex *)*rwdataSlot)
                     {
@@ -7632,11 +7620,7 @@ void objDeform(ObjectRecord *obj, E_EXPLOSIONTYPE explosiontype)
         return;
     }
     
-#ifdef TARGET_N64
-    vtxslot = (Vertex **) (&model->datas[rodata->RwDataIndex]);
-#else
     vtxslot = (Vertex **) MODEL_RWDATA_AT(model->datas, rodata->RwDataIndex);
-#endif
     
 #ifdef VERSION_EU
     if (obj->obj < PROP_WINDOW)
@@ -8468,11 +8452,7 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
 
     while (1)
     {
-#ifdef TARGET_N64
-        op = *((s8 *) gdl); /* opcode = first byte on big-endian */
-#else
         op = (s8) (gdl->words.w0 >> 24);
-#endif
         if (op == (s8)G_ENDDL)
         {
             if (gdl2 == 0)
@@ -8492,11 +8472,7 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
 
         if (op == G_VTX)
         {
-#ifdef TARGET_N64
-            op = ((u8 *) gdl)[1] & 0xf; /* vertex buffer offset (v0) */
-#else
             op = (gdl->words.w0 >> 16) & 0xf;
-#endif
             padC = ((u32 *) gdl)[1] & 0x00ffffff;
             vtxbase = (Vertex *) ((((s32) vertices) + padC) - (op << 4));
             gdl++;
@@ -8509,15 +8485,9 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
             bboxMin = D_8003204C;
             bboxMax = D_80032058;
 
-#ifdef TARGET_N64
-            idx[0] = ((u8 *) gdl)[5] / 10;
-            idx[1] = ((u8 *) gdl)[6] / 10;
-            idx[2] = ((u8 *) gdl)[7] / 10;
-#else
             idx[0] = (s32) ((gdl->words.w1 >> 16) & 0xff) / 10;
             idx[1] = (s32) ((gdl->words.w1 >> 8) & 0xff) / 10;
             idx[2] = (s32) (gdl->words.w1 & 0xff) / 10;
-#endif
 
             for (i = 0; i < 3; i++)
             {
@@ -8561,31 +8531,6 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                     dy = (f32) (((s32) hitbuf.hitpos.y) - ((s32) arg0->y));
                     dz = (f32) (((s32) hitbuf.hitpos.z) - ((s32) arg0->z));
                     tcmd = gdl;
-#ifdef TARGET_N64
-                    if (((*((u8 *) gdl)) != 253) && (cmdStart < gdl))
-                    {
-                        do
-                        {
-                            tcmd--;
-
-                            if ((*((u8 *) tcmd)) == 253)
-                            {
-                                break;
-                            }
-                        } while (cmdStart < tcmd);
-
-                    }
-
-                    if (tcmd == cmdStart)
-                    {
-                        texnum = -1;
-                    }
-                    else
-                    {
-                        padC = ((u32 *) tcmd)[1] - 8;
-                        texnum = *((u16 *) (padC | 0x80000000));
-                    }
-#else
                     if (((u8) (gdl->words.w0 >> 24) != (u8) G_SETTIMG) && (cmdStart < gdl))
                     {
                         do
@@ -8620,7 +8565,6 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                             texnum = *((u16 *) (uintptr_t) ((u32) padC - 8));
                         }
                     }
-#endif
 
                     d = ((dx * dx) + (dy * dy)) + (dz * dz);
 
@@ -8652,39 +8596,12 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                 bboxMin2 = D_80032070;
                 bboxMax2 = D_8003207C;
 
-#ifdef TARGET_N64
-                if (s2 == 0)
-                {
-                    idx2[0] = ((u32 *) gdl)[1] & 0xf;
-                    idx2[1] = ((u32) ((u8 *) gdl)[7]) >> 4;
-                    idx2[2] = ((u32 *) gdl)[0] & 0xf;
-                }
-                else if (s2 == 1)
-                {
-                    idx2[0] = ((u8 *) gdl)[6] & 0xf;
-                    idx2[1] = ((u32) ((u16 *) gdl)[3]) >> 12;
-                    idx2[2] = ((u32) ((u8 *) gdl)[3]) >> 4;
-                }
-                else if (s2 == 2)
-                {
-                    idx2[0] = ((u16 *) gdl)[2] & 0xf;
-                    idx2[1] = ((u32) ((u8 *) gdl)[5]) >> 4;
-                    idx2[2] = ((u8 *) gdl)[2] & 0xf;
-                }
-                else
-                {
-                    idx2[0] = ((u8 *) gdl)[4] & 0xf;
-                    idx2[1] = ((u32 *) gdl)[1] >> 28;
-                    idx2[2] = ((u32) ((u16 *) gdl)[1]) >> 12;
-                }
-#else
                 /* triangle s2 of a G_TRI4: x nibble at w1 >> (8*s2),
                  * y at w1 >> (8*s2 + 4), z at w0 >> (4*s2) — see
                  * gSP4Triangles in gbi_extension.h */
                 idx2[0] = (gdl->words.w1 >> (s2 * 8)) & 0xf;
                 idx2[1] = (gdl->words.w1 >> (s2 * 8 + 4)) & 0xf;
                 idx2[2] = (gdl->words.w0 >> (s2 * 4)) & 0xf;
-#endif
 
                 for (i = 0; i < 3; i++)
                 {
@@ -8729,30 +8646,6 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                         dz = (f32) (((s32) hitbuf.hitpos.z) - ((s32) arg0->z));
                         tcmd = gdl;
 
-#ifdef TARGET_N64
-                        if (((*((u8 *) gdl)) != G_SETTIMG) && (cmdStart < gdl))
-                        {
-                            do
-                            {
-                                tcmd--;
-                                if ((*((u8 *) tcmd)) == G_SETTIMG)
-                                {
-                                    break;
-                                }
-                            } while (cmdStart < tcmd);
-
-                        }
-
-                        if (tcmd == cmdStart)
-                        {
-                            texnum = -1;
-                        }
-                        else
-                        {
-                            padC = ((u32 *) tcmd)[1] - 8;
-                            texnum = *((u16 *) (padC | 0x80000000));
-                        }
-#else
                         if (((u8) (gdl->words.w0 >> 24) != (u8) G_SETTIMG) && (cmdStart < gdl))
                         {
                             do
@@ -8783,7 +8676,6 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                                 texnum = *((u16 *) (uintptr_t) ((u32) padC - 8));
                             }
                         }
-#endif
 
                         d = ((dx * dx) + (dy * dy)) + (dz * dz);
 
@@ -14425,11 +14317,7 @@ void sub_GAME_7F056690(void)
                 }
                 if (sub_GAME_7F04B590(s1->model->obj, t0) != 0)
                 {
-#ifdef TARGET_N64
-                    new_var = &s3->datas[s0->RwDataIndex];
-#else
                     new_var = MODEL_RWDATA_AT(s3->datas, s0->RwDataIndex);
-#endif
                     if ((s32)s0->Vertices != (s32)*new_var)
                     {
                         objFreePermanently(s1, 1);

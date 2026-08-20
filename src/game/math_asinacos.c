@@ -1,7 +1,5 @@
 #include <ultra64.h>
-#ifndef TARGET_N64
 #include "math_asinacos.h" /* PC: renames acos/asin away from libm's */
-#endif
 
 //data
 //D:80032320

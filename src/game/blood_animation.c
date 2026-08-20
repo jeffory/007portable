@@ -223,15 +223,11 @@ s32 die_blood_image_routine(s32 arg0) {
    if (arg0 == 0) {
       g_CurrentPlayer->bloodImgCur = die_blood_image_1;
    } else if (arg0 == 1) {
-#ifdef TARGET_N64
-      if (g_CurrentPlayer->bloodImgNxt < &die_blood_image_end) {
-#else
       /* GCC splits the zero-initialized end marker into .bss, far away
        * from the data; IDO kept it directly after the array. Use the
        * real array bound or the decrypter walks garbage and its output
        * cursor tramples whatever follows the dyn scratch buffer. */
       if (g_CurrentPlayer->bloodImgNxt < die_blood_image_1 + sizeof(die_blood_image_1)) {
-#endif
          g_CurrentPlayer->bloodImgCur = g_CurrentPlayer->bloodImgNxt;
       }
    }
@@ -245,11 +241,7 @@ s32 die_blood_image_routine(s32 arg0) {
    sub_GAME_7F01CEEC(g_CurrentPlayer->bloodImgBufPtrArray[g_CurrentPlayer->bloodImgIdx], BLOOD_IMG_WIDTH, g_CurrentPlayer->bloodImgBufPtrArray[g_CurrentPlayer->bloodImgIdx]);
    sub_GAME_7F01CC94(g_CurrentPlayer->bloodImgBufPtrArray[g_CurrentPlayer->bloodImgIdx], BLOOD_IMG_WIDTH * BLOOD_IMG_HEIGHT, g_CurrentPlayer->bloodImgBufPtrArray[g_CurrentPlayer->bloodImgIdx]);
 
-#ifdef TARGET_N64
-   return (g_CurrentPlayer->bloodImgNxt >= &die_blood_image_end);
-#else
    return (g_CurrentPlayer->bloodImgNxt >= die_blood_image_1 + sizeof(die_blood_image_1));
-#endif
 }
 
 Gfx *gunbarrelBloodOverlayDL(Gfx *gdl) {

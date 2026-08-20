@@ -27,11 +27,9 @@ s32 init_pathtable_something(struct PadRecord *pad, char *tilename, struct Stand
         
         *tile_stack = NULL;
 
-#ifndef TARGET_N64
         osSyncPrintf("port/warn: pad at (%f,%f,%f) failed stan bind (name '%s')\n",
                      pad->pos.f[0], pad->pos.f[1], pad->pos.f[2],
                      tilename != NULL ? tilename : "<null>");
-#endif
 
         return 0;
     }

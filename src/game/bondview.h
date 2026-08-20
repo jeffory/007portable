@@ -214,22 +214,11 @@ struct hand
   Mtxf throw_item_pos_related_prev;
   coord3d field_B58;
   f32 field_B64;
-#ifdef TARGET_N64
-  s32 field_B68;
-  s32 field_B6C;
-  s32 field_B70;
-  Mtxf *mtxlist;
-  s32 field_B78;
-  s32 field_B7C;
-  s32 field_B80;
-  s32 field_B84;
-#else
   /* PC: these 8 words are an inline (non-anim) Model on N64
    * (gunfire.c: model = (Model *)&hand->field_B68; hand->mtxlist is its
    * render_pos). Too small for 64-bit pointers, so make it real; the
    * field_B68 alias macro after the struct keeps the cast sites working. */
   Model gunModel;
-#endif
   s32 modeldatas;
   s32 field_B8C;
   s32 field_B90;
@@ -262,9 +251,7 @@ struct hand
   s32 field_BFC;
   s32 field_C00;
   s32 field_C04;
-#ifndef TARGET_N64
   u32 gunRwPad[32]; /* 64-bit rwdata records can exceed the 32-word run */
-#endif
   s32 volley;  // Number of bullets discharged in a row. For pistols, it's always 1 even if the fire button is held.
   coord3d item_related;
 };
@@ -910,92 +897,6 @@ struct player
   vec3d standup[2];
 
   // offset 0x594
-#ifdef TARGET_N64
-  s32 standcnt;
-  Model *model;
-  s32 field_59C;
-  s32 field_5A0;
-  s32 field_5A4;
-  s32 field_5A8;
-  s32 field_5AC;
-  s32 field_5B0;
-  s32 field_5B4;
-  s32 field_5B8;
-  s8 animFlipFlag;
-  s8 field_5BD;
-  s8 field_5BE;
-  s8 field_5BF;
-
-  f32 field_5C0;
-
-  s32 field_5C4;
-  s32 field_5C8;
-  s32 field_5CC;
-  s32 field_5D0;
-  s32 field_5D4;
-  s32 field_5D8;
-  s32 field_5DC;
-  s32 field_5E0;
-  s32 field_5E4;
-  s32 field_5E8;
-  s32 field_5EC;
-  s32 field_5F0;
-  s32 field_5F4;
-  s32 field_5F8;
-  s32 field_5FC;
-  s32 field_600;
-  s32 field_604;
-  s32 field_608;
-  s32 field_60C;
-  s32 field_610;
-  s32 field_614;
-  s32 field_618;
-  s32 field_61C;
-  s32 field_620;
-  s32 field_624;
-  s32 field_628;
-  s32 field_62C;
-  s32 field_630;
-  s32 field_634;
-  s32 field_638;
-  s32 field_63C;
-  s32 field_640;
-  s32 field_644;
-  s32 field_648;
-  s32 field_64C;
-  s32 field_650;
-  s32 field_654;
-  s32 field_658;
-  s32 field_65C;
-  s32 field_660;
-  s32 field_664;
-  s32 field_668;
-  s32 field_66C;
-  s32 field_670;
-  s32 field_674;
-  s32 field_678;
-  s32 field_67C;
-  s32 field_680;
-  s32 field_684;
-  s32 field_688;
-  s32 field_68C;
-  s32 field_690;
-  s32 field_694;
-  s32 field_698;
-  s32 field_69C;
-  s32 field_6A0;
-  s32 field_6A4;
-  s32 field_6A8;
-  s32 field_6AC;
-  s32 field_6B0;
-  s32 field_6B4;
-  s32 field_6B8;
-  s32 field_6BC;
-  s32 field_6C0;
-  s32 field_6C4;
-  s32 field_6C8;
-  s32 field_6CC;
-#else
   /* PC: on N64 this run of raw s32 fields is really an inline Model
    * (animInit(&player->model, ...)) followed by its rwdata block
    * (field_654..field_6CC, <=0x1F words per the LEFTOVERDEBUG assert).
@@ -1006,7 +907,6 @@ struct player
   s32 standcnt;
   Model model;
   u32 gaitRwData[48];
-#endif
 
   Mtxf bondheadmatrices[4];
 
@@ -2361,18 +2261,14 @@ struct player
   s32 field_2A7C;
 };
 
-#ifndef TARGET_N64
 /* alias for the inline gun-hand Model (struct hand) */
 #define field_B68 gunModel
-#endif
 
-#ifndef TARGET_N64
 /* aliases for the inline gait Model carved out of raw s32 fields on N64
  * (see the Model model / gaitRwData block above) */
 #define animFlipFlag model.gunhand
 #define field_5C0 model.animframe1
 #define field_654 gaitRwData[0]
-#endif
 
 struct firing_anim_struct {
     struct weapon_firing_animation_table * pointer;
@@ -2443,12 +2339,10 @@ typedef struct Weapon1PTransformKeyframe {
 struct move_bond_temp_struct {
     s32 unk00;
     s32 unk04;
-#ifndef TARGET_N64
     /* passed to stanTileDistanceRelated, whose record (and callbacks) span
      * 16 bytes; the N64 build let it spill into IDO frame slack */
     s32 port_pad08;
     s32 port_pad0c;
-#endif
 };
 
 //D:80036424

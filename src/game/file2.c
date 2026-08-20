@@ -511,12 +511,10 @@ void fileValidateSaves(void)
             smallSave NewSave = {0, 0, SAVEFLAGS_SET(FOLDER3, SAVESLOT1, BOND_CONNERY, FALSE)};
             joyChecksum = NewSave;
             fileWriteSmallSave(&joyChecksum);
-#ifndef TARGET_N64
             {
                 extern int printf(const char *, ...);
                 printf("port/file: small save checksum bad, recreated\n");
             }
-#endif
         }
 
         // Block read 5 saves starting at address 4th byte (? bug: address must be multiple of 8 - return is -1)
@@ -540,12 +538,10 @@ void fileValidateSaves(void)
             if (!checksumOK2)
             {
                 fileResetSave(&saves[i]);
-#ifndef TARGET_N64
                 {
                     extern int printf(const char *, ...);
                     printf("port/file: save slot %d checksum bad, reset\n", (int)i);
                 }
-#endif
             }
         }
 
@@ -866,18 +862,12 @@ void fileGetHighestStageDifficultyCompletedForFolder(s32 foldernum, LEVEL_SOLO_S
 
     if (folder)
     {
-#ifdef TARGET_N64
-        for (difficultyid = DIFFICULTY_007; difficultyid >= DIFFICULTY_AGENT; difficultyid--)
-        {
-            for (stageid = SP_LEVEL_EGYPT; stageid >= SP_LEVEL_DAM; stageid--)
-#else
         /* GCC gives these enums an unsigned type, so ">= 0" never fails
          * and the decrement wraps into an infinite loop (IDO enums are
          * signed) */
         for (difficultyid = DIFFICULTY_007; (s32)difficultyid >= (s32)DIFFICULTY_AGENT; difficultyid--)
         {
             for (stageid = SP_LEVEL_EGYPT; (s32)stageid >= (s32)SP_LEVEL_DAM; stageid--)
-#endif
             {
                 if ( fileGetSaveStageCompletedForDifficulty(folder, stageid, difficultyid))
                 {

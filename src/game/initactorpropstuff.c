@@ -1,7 +1,5 @@
 #include <ultra64.h>
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 #include "initactorpropstuff.h"
 #include "initanitable.h"
 #include "chr.h"
@@ -112,12 +110,10 @@ s32 initResolveAnimGroupTable(struct weapon_firing_animation_table *animconfig)
         do
         {
             config->anim.anim = (struct ModelAnimation *)(((0, animoffset)) + ((s32)ptr_animation_table));
-#ifndef TARGET_N64
             /* PORT_PREPROCESS: weapon/attack anims are not in the boot-time
              * anim pointer lists; swap their BE headers on first resolve
              * (portSwapAnimHeader dedups by pointer) */
             portSwapAnimHeader(config->anim.anim, ptr_animation_table);
-#endif
             endframe = floorFloatToInt(config->unk04);
             angle16 = sub_GAME_7F0001F0(config->anim.anim, 0, endframe) & 0xffff;
             duration = config->unk04;
@@ -196,9 +192,7 @@ s32 initResolveAnimTable(struct StruckAnim *entries)
             entry++;
             ptr_animation_table_addr = (struct StruckAnim *)(&ptr_animation_table);
             entry[-1].struck_anim = (ModelAnimation *)((*((s32 *)entries)) + (0, address));
-#ifndef TARGET_N64
             portSwapAnimHeader(entry[-1].struck_anim, ptr_animation_table); /* PORT_PREPROCESS */
-#endif
         }
         while (entry->struck_anim != 0);
     }
@@ -256,7 +250,6 @@ void initWeaponAnimGroups(void)
     initResolveAnimGroupTable(D_80030078);
     initResolveAnimGroupTable(D_80030660);
 
-#ifndef TARGET_N64
     /* PORT_PREPROCESS: ANIM_FRAC reads these headers directly */
     portSwapAnimHeader(ANIM_PTR(ANIM_DATA_walking), ptr_animation_table);
     portSwapAnimHeader(ANIM_PTR(ANIM_DATA_running), ptr_animation_table);
@@ -266,7 +259,6 @@ void initWeaponAnimGroups(void)
     portSwapAnimHeader(ANIM_PTR(ANIM_DATA_sprinting_one_handed_weapon), ptr_animation_table);
     portSwapAnimHeader(ANIM_PTR(ANIM_DATA_walking_female), ptr_animation_table);
     portSwapAnimHeader(ANIM_PTR(ANIM_DATA_running_female), ptr_animation_table);
-#endif
     D_80030984 = ANIM_FRAC(ANIM_DATA_walking);
     D_80030988 = ANIM_FRAC(ANIM_DATA_running);
     D_8003098C = ANIM_FRAC(ANIM_DATA_sprinting);

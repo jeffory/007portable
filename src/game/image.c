@@ -1,7 +1,5 @@
 #include <ultra64.h>
-#ifndef TARGET_N64
 #include <stdio.h>
-#endif
 #include "bondconstants.h"
 #include "image.h"
 #include "image_bank.h"
@@ -15,15 +13,6 @@
 
 // bss
 //8008C720
-#ifdef TARGET_N64
-struct texpool *ptr_texture_alloc_start;
-//8008C724
-s32 ptr_texture_alloc_end;
-//8008C728
-s32 ptr_next_available_space;
-//8008C72C
-s32 ptr_last_entry_facemapping;
-#else
 /* PC: these four bss words are really one struct texpool, always accessed
  * through (struct texpool *)&ptr_texture_alloc_start. Four separate 4-byte
  * globals can neither hold 8-byte pointers nor stay contiguous under GCC,
@@ -31,7 +20,6 @@ s32 ptr_last_entry_facemapping;
  * the N64 token stream unchanged). */
 struct texpool g_MainTexPool;
 #define ptr_texture_alloc_start (g_MainTexPool.start)
-#endif
 //8008C730
 struct texcacheitem g_TexCacheItems[150];
 //8008D090
@@ -170,11 +158,7 @@ s32 texInflateZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct texpoo
     s32 j;
     s32 unused;
     u8 scratch2[0x800];
-#ifdef TARGET_N64
-    u8 scratch[0x2100];
-#else
     u8 scratch[DOUBLE_SIZE_ON_64_BIT(0x2100)]; /* huft entries double on 64-bit */
-#endif
     u16 palette[0x100];
 
     totalbytesout = 0;
@@ -210,13 +194,11 @@ s32 texInflateZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct texpoo
     format = texReadBits(8);
     numcolours = texReadBits(8) + 1;
 
-#ifndef TARGET_N64
     if (getenv("PORT_TEX_TRACE") != NULL)
     {
         fprintf(stderr, "port/tex: num=%d ZLIB fmt=%d colours=%d\n",
                 g_TexNumToLoad, format, numcolours);
     }
-#endif
 
     for (i = 0; i < numcolours; i++)
     {
@@ -366,9 +348,6 @@ s32 texAlignIndices(u8 *src, s32 width, s32 height, s32 format, u8 *dst)
             src++;
         }
 
-#ifdef TARGET_N64
-        outptr = (u8 *)(((u32)outptr + 7) & ~7);
-#else
         /* The N64 build aligns each row to an ABSOLUTE 8-byte address; that
          * equals 8-byte row padding because pool image data is always
          * 8-aligned there. On PC the pool entries land on 4-mod-8 addresses,
@@ -377,7 +356,6 @@ s32 texAlignIndices(u8 *src, s32 width, s32 height, s32 format, u8 *dst)
          * 4 bytes (2 TLUT entries) - the source of the blue/green
          * first-person guns. Align relative to the row buffer instead. */
         outptr = dst + (((uintptr_t)(outptr - dst) + 7) & ~(uintptr_t)7);
-#endif
     }
 
     return outptr - dst;
@@ -902,13 +880,11 @@ s32 texInflateNonZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct tex
         height = texReadBits(8);
         compmethod = texReadBits(4);
 
-#ifndef TARGET_N64
         if (getenv("PORT_TEX_TRACE") != NULL)
         {
             fprintf(stderr, "port/tex: num=%d lod=%d fmt=%d %dx%d comp=%d\n",
                     g_TexNumToLoad, i, format, width, height, compmethod);
         }
-#endif
 
         if (i == 0)
         {
@@ -1093,7 +1069,6 @@ s32 texInflateNonZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct tex
         }
     }
 
-#ifndef TARGET_N64
     /* The decoders above (texChannelsToPixels, texReadUncompressed,
      * texInflateLookup*, texShrinkNonPaletted) pack 16/32-bit texels with
      * native-endian stores; the RDP -- and fast3d's importer -- read
@@ -1123,7 +1098,6 @@ s32 texInflateNonZlib(u8 *src, u8 *dst, s32 arg2, s32 forcenumimages, struct tex
             h[i] = (u16)((h[i] >> 8) | (h[i] << 8));
         }
     }
-#endif
 
     return totalbytesout;
 }
@@ -1710,18 +1684,12 @@ void texReadAlphaBits(u8 *image,s32 count)
  */
 s32 texReadUncompressed(u8 *dst, s32 width, s32 height, s32 format)
 {
-#ifdef TARGET_N64
-	u32 *dst32 = (u32 *)(((u32)dst + 0xf) & ~0xf);
-	u16 *dst16 = (u16 *)(((u32)dst + 7) & ~7);
-	u8 *dst8 = (u8 *)(((u32)dst + 7) & ~7);
-#else
 	/* See texAlignIndices: absolute-address alignment assumes the pool
 	 * write cursor is already aligned (true on N64, not on PC). Write at
 	 * dst directly so the data starts where readers expect it. */
 	u32 *dst32 = (u32 *)dst;
 	u16 *dst16 = (u16 *)dst;
 	u8 *dst8 = (u8 *)dst;
-#endif
 	s32 x;
 	s32 y;
 
@@ -2255,7 +2223,6 @@ void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 	u32 *row = (u32 *)dst;
 	s32 tmp;
 
-#ifndef TARGET_N64
 	/* This pre-swizzles odd rows (32-bit word pair exchange) so that a
 	 * dxt=0 LoadBlock leaves TMEM in the layout the RDP sampler
 	 * un-swizzles at fetch time. fast3d reads texture RAM linearly and
@@ -2264,7 +2231,6 @@ void texSwapAltRowBytes(u8 *dst, s32 width, s32 height, s32 format)
 	 * odd rows rotated by half a TMEM word - the "checkerboard" on the
 	 * Bond photos. Keep the data linear on PC. */
 	return;
-#endif
 
 	switch (format) {
 	case TEXFORMAT_RGBA32:
@@ -2412,20 +2378,6 @@ s32 texFreeBytesInBuffer(struct texpool *arg0)
 
 void texLoadFromDisplayList(Gfx *gdl, struct texpool *arg1)
 {
-#ifdef TARGET_N64
-    u8 *bytes = (u8 *)gdl;
-
-    while (bytes[0] != (u8)G_ENDDL)
-    {
-        // Look for GBI sequence: fd...... abcd....
-        if (bytes[0] == G_SETTIMG && bytes[4] == 0xab && bytes[5] == 0xcd)
-        {
-            texLoad((u32 *)((s32)bytes + 4), arg1);
-        }
-
-        bytes += 8;
-    }
-#else
     /* byte-indexed opcode/marker reads are big-endian-only */
     while ((gdl->words.w0 >> 24) != (u8)G_ENDDL)
     {
@@ -2436,7 +2388,6 @@ void texLoadFromDisplayList(Gfx *gdl, struct texpool *arg1)
 
         gdl++;
     }
-#endif
 }
 
 
@@ -2498,7 +2449,6 @@ void texLoad(s32 *updateword, struct texpool *pool)
 
     g_TexNumToLoad = *updateword & 0xffff;
 
-#ifndef TARGET_N64
     /* defensive: a bad texture id would index past the table and DMA from
      * a garbage ROM offset; use the same fallback as the out-of-memory path */
     if (g_TexNumToLoad >= (s32)(sizeof(g_Textures) / sizeof(g_Textures[0])) - 1) {
@@ -2506,7 +2456,6 @@ void texLoad(s32 *updateword, struct texpool *pool)
         *updateword = osVirtualToPhysical(pool->start); /* pool was defaulted above */
         return;
     }
-#endif
 
     tex = texFindInPool(g_TexNumToLoad, pool);
 
@@ -2520,14 +2469,9 @@ void texLoad(s32 *updateword, struct texpool *pool)
         osWritebackDCacheAll();
         osInvalDCache(alignedcompbuffer, DCACHE_SIZE);
 
-#ifdef TARGET_N64
-        thisoffset = *((s32*)&g_Textures[g_TexNumToLoad]) & 0xFFFFFF;
-        nextoffset = (*((s32 *) (&g_Textures[g_TexNumToLoad + 1]))) & ((unsigned long) 0xFFFFFF);
-#else
         /* the word-pun over the bitfields is big-endian-only */
         thisoffset = g_Textures[g_TexNumToLoad].dataoffset;
         nextoffset = g_Textures[g_TexNumToLoad + 1].dataoffset;
-#endif
 
         if (TRUE)
         {
@@ -2548,10 +2492,8 @@ void texLoad(s32 *updateword, struct texpool *pool)
             // only other option is a crash. GBI commands contain texture IDs
             // instead of pointers, and they must be replaced with pointers.
             if ((!iszlib && (texFreeBytesInBuffer(pool) < 0x10CC)) || (iszlib && texFreeBytesInBuffer(pool) < 0xA28)) {
-#ifndef TARGET_N64
                 fprintf(stderr, "port/tex: pool full loading tex %d (free %d, zlib %d)\n",
                         g_TexNumToLoad, texFreeBytesInBuffer(pool), iszlib);
-#endif
                 *updateword = osVirtualToPhysical(pool->start);
                 return;
             }
@@ -2574,7 +2516,6 @@ void texLoad(s32 *updateword, struct texpool *pool)
                 bytesout = texInflateNonZlib(compptr, pool->leftpos, sp14a8, lod, pool);
             }
 
-#ifndef TARGET_N64
             /* PORT_TEX_DUMP=<num>: write that texture's decoded bytes to
              * /tmp/ge_tex_<num>.bin for offline inspection */
             {
@@ -2595,7 +2536,6 @@ void texLoad(s32 *updateword, struct texpool *pool)
                     }
                 }
             }
-#endif
 
             pool->leftpos += bytesout;
         }

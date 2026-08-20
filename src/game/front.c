@@ -1,7 +1,5 @@
 #include <os_extension.h>
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 #include <assets/oddtextures.h>
 #include "assets/image_externs.h"
 #include <ultra64.h>
@@ -1543,14 +1541,10 @@ Gfx *constructor_menu00_legalscreen(Gfx *DL)
     DL = microcode_constructor(DL);
     
     legal_text_ptr = legalpage_text_array;
-#ifdef TARGET_N64
-    legal_text_end = (struct legal_screen_text *)&legalscreen_MRD;
-#else
     /* the N64 bound relies on link order placing legalscreen_MRD right
      * after the array */
     legal_text_end = legalpage_text_array
         + sizeof(legalpage_text_array) / sizeof(legalpage_text_array[0]);
-#endif
     
     do
     {
@@ -6504,9 +6498,7 @@ void load_briefing_text_for_stage(void)
     // alright
     argg = 0x200;
     ptrbriefingdata = _fileNameLoadToAddr(mission_folder_setup_entries[briefingpage].briefing_name_ptr, FILELOADMETHOD_DEFAULT, (u8 *) temp_s0, argg);
-#ifndef TARGET_N64
     portSwapBriefingData(ptrbriefingdata); // PORT_PREPROCESS
-#endif
 
     // what is this
     temp_s0 += argg / 8;

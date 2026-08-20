@@ -3,11 +3,9 @@
 #ifndef _MATH_EXT_H_
 #define _MATH_EXT_H_
 
-#ifndef TARGET_N64
 /* PC port: pull in the host math.h first; the M_* extras and
  * float declarations below coexist with it. */
 #include_next <math.h>
-#endif
 
 /* Some useful constants */
 /*  The base of natural logarithms, e.*/

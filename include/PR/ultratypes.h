@@ -69,16 +69,8 @@ typedef double                      f64; /* double prec floating point */
 #endif
 
 //this section is from stddef.h and should go back there
-#ifdef TARGET_N64
-    typedef u32 size_t;
-    typedef s32 ssize_t;
-    typedef u32 uintptr_t;
-    typedef s32 intptr_t;
-    typedef s32 ptrdiff_t;
-#else
     #include <stddef.h>
     #include <stdint.h>
     typedef ptrdiff_t ssize_t;
-#endif
 
 #endif /* _ULTRATYPES_H_ */

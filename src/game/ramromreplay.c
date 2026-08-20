@@ -534,24 +534,12 @@ void stop_demo_playback(void)
 // Address 0x7F0C0970 NTSC.
 void select_ramrom_to_play(void)
 {
-#ifdef TARGET_N64
-    s32 i;
-    s32 temp_v0;
-
-    temp_v0 = fileGetHighestStageUnlockedAnyFolder();
-
-    for (i = 0; ramrom_table[i].fdata != NULL && temp_v0 >= ramrom_table[i].locked; i++)
-    {}
-
-    replay_recorded_ramrom_at_address(ramrom_table[randomGetNext() % i].fdata);
-#else
     /* PORT_TODO: attract demo playback needs the ramrom demo files
      * byteswapped (recorded input stream + register block); while a demo
      * plays, joy input comes from that data, so an unswapped demo leaves
      * Bond frozen and deaf to the keyboard. Loop the attract sequence
      * instead until the swap is written. */
     frontChangeMenu(MENU_LEGAL_SCREEN, TRUE);
-#endif
 }
 
 

@@ -135,15 +135,6 @@ typedef struct bg_portal_data_entry
     u8 controlbytes2;
 } bg_portal_data_entry;
 
-#ifdef TARGET_N64
-typedef struct bg_room_data
-{
-    void* pPointTableBin;
-    void* pPriMappingBin;
-    void* pSecMappingBin;
-    coord3d pos;
-} bg_room_data;
-#else
 /* PC: 24-byte records inside the bg blob, indexed in place. The three
  * slots hold segment-0x0f offsets that are only ever used as 32-bit
  * values (BG_SEG_TO_PTR / size arithmetic), never dereferenced, so keep
@@ -155,7 +146,6 @@ typedef struct bg_room_data
     u32 pSecMappingBin;
     coord3d pos;
 } bg_room_data;
-#endif
 
 typedef struct s_specialportal
 {

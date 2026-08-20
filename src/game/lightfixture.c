@@ -195,37 +195,6 @@ Vtx *lightFindVertexBaseForTri(Gfx *gfx, s32 room_index)
 
 void extract_vertex_indices_from_triangle(Gfx* gfx, u32 tri_type, s32* idx1, s32* idx2, s32* idx3)
 {
-#ifdef TARGET_N64
-    switch (tri_type)
-    {
-        case 0:
-            *idx1 = (s32) gfx->tri.tri.v[0] / 10;
-            *idx2 = (s32) gfx->tri.tri.v[1] / 10;
-            *idx3 = (s32) gfx->tri.tri.v[2] / 10;
-            break;
-        // unsure of how to cleanly access the below versions
-        case 1:
-            *idx1 = ((u32*)gfx)[1] & 0xF;
-            *idx2 = ((((u8*)gfx)[7]) & 0xFFFFFFFFu) >> 4;
-            *idx3 = ((s32*)gfx)[0] & 0xF;
-            break;
-        case 2:
-            *idx1 = ((u8*)gfx)[6] & 0xF;
-            *idx2 = ((((u16*)gfx)[3]) & 0xFFFFFFFFu) >> 0xC;
-            *idx3 = ((((u8*)gfx)[3]) & 0xFFFFFFFFu) >> 4;
-            break;
-        case 3:
-            *idx1 = ((u16*)gfx)[2] & 0xF;
-            *idx2 = ((((u8*)gfx)[5]) & 0xFFFFFFFFu) >> 4;
-            *idx3 = ((u8*)gfx)[2] & 0xF;
-            break;
-        case 4:
-            *idx1 = ((u8*)gfx)[4] & 0xF;
-            *idx2 = ((u32*)gfx)[1] >> 0x1C;
-            *idx3 = ((((u16*)gfx)[1]) & 0xFFFFFFFFu) >> 0xC;
-            break;
-    }
-#else
     /* same nibble/byte extracts expressed on the native w0/w1 values
      * (the byte-indexed originals assume big-endian storage) */
     u32 w0 = gfx->words.w0;
@@ -259,7 +228,6 @@ void extract_vertex_indices_from_triangle(Gfx* gfx, u32 tri_type, s32* idx1, s32
             *idx3 = (w0 & 0xFFFF) >> 12;
             break;
     }
-#endif
 }
 
 

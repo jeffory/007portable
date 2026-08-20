@@ -502,13 +502,9 @@ void solo_char_load(void)
                 load_object_fill_header(headheader, (u8 *)c_item_entries[head].filename, weaponbuf0 + cursor, size0 - cursor, &pool);
                 cursor = ALIGN64_V3(get_pc_buffer_remaining_value((u8 *)c_item_entries[head].filename) + cursor + 0x3f);
                 model  = (Model *)(weaponbuf0 + cursor);
-#ifdef TARGET_N64
-                cursor = ALIGN64_V3(cursor + 0xfb);
-#else
                 /* 0xfb encodes the 32-bit sizeof(Model)+0x3b; the struct is
                  * larger on 64-bit hosts and the rwdata block follows */
                 cursor = ALIGN64_V3(cursor + sizeof(Model) + 0x3f);
-#endif
                 modelCalculateRwDataLen(bodyheader);
                 modelCalculateRwDataLen(headheader);
 
@@ -571,12 +567,8 @@ void solo_char_load(void)
             {
                 helddst      = cursor;
                 helddst      = ((s32)weaponbuf0) + helddst;
-#ifdef TARGET_N64
-                cursor       = ALIGN64_V3(cursor + 0xc7);
-#else
                 /* 0xc7 encodes the 32-bit sizeof(WeaponObjRecord) + slack */
                 cursor       = ALIGN64_V3(cursor + sizeof(WeaponObjRecord) + 0x3f);
-#endif
                 pitemheader  = get_ptr_itemheader_in_hand(GUNLEFT);
                 *pitemheader = *PitemZ_entries[prop].header;
                 load_object_fill_header(pitemheader, (u8 *)PitemZ_entries[prop].filename, weaponbuf0 + cursor, size0 - cursor, &pool);
@@ -1075,13 +1067,9 @@ void bondviewCalcIntroSwirlCamera(s32 index, f32 time, coord3d *pos, coord3d *lo
 {
     struct SetupIntroSwirl *base;
     struct SetupIntroSwirl *loopbase;
-#ifdef TARGET_N64
-    f32 pointbuf[10];
-#else
     /* the i==2 iteration writes pointbuf[9..11]; IDO's frame layout absorbed
      * the 2-float overflow, GCC's puts locals there */
     f32 pointbuf[12];
-#endif
     struct SetupIntroSwirl *swirl;
     f32 frac;
     f32 *dst;
@@ -6049,7 +6037,6 @@ void bondviewProcessInput(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
         }
     }
 
-#ifndef TARGET_N64
     /* PORT: scrollwheel weapon cycling + number-key direct select, injected
      * beside the native A-button cycle so the same gating applies. Always
      * consume so gated-off frames (pause, cinema, MP flag carrier) don't
@@ -6079,7 +6066,6 @@ void bondviewProcessInput(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
             }
         }
     }
-#endif
 
     if (moveData.canSwivelGun)
     {
@@ -6793,7 +6779,6 @@ void MoveBond(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
         g_CurrentPlayer->vv_theta = stack_padding_9;
     }
 
-#ifndef TARGET_N64
     /* PORT: direct mouse aim — apply the accumulated mouse deltas straight
      * to the view angles (no virtual-stick translation, no turn speed cap).
      * Always consume so gated-off frames (pause, tank, cinema) don't bank a
@@ -6823,7 +6808,6 @@ void MoveBond(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
             g_CurrentPlayer->vv_verta -= mdy;
         }
     }
-#endif
 
     bondviewApplyVertaTheta();
 
@@ -10215,13 +10199,9 @@ s32 playerTick(PropRecord *prop)
     s32 ret;
     s32 sub;
     PropRecord *leftprop;
-#ifdef TARGET_N64
-    f32 mtx[15];
-#else
     /* matrix_4x4_multiply_homogeneous writes a full 4x4 (16 floats);
      * the 15-float buffer relied on IDO frame slack for the last one */
     f32 mtx[16];
-#endif
     s32 tailret;
     s32 anim;
     f32 angle;

@@ -1,7 +1,5 @@
 #include <ultra64.h>
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 #include <memp.h>
 #include "initanitable.h"
 #include "objecthandler.h"
@@ -233,28 +231,6 @@ struct anim_entry
     s32 unk10;
 };
 
-#ifdef TARGET_N64
-void expand_ani_table_entries(s32** arg0)
-{
-    s32** var_v0;
-
-    var_v0 = arg0;
-    while (*var_v0 != 0) {
-        if (*var_v0 != (s32*)1) {
-            *var_v0 = (s32)((s32)*var_v0 + (s32)(&ptr_animation_table->data));
-            ((struct anim_entry *)*var_v0)->unk08 += (s32)&ptr_animation_table->data;
-            ((struct anim_entry *)*var_v0)->unk10 += (s32)&ptr_animation_table->data;
-        }
-        var_v0++;
-    }
-
-    for (var_v0 = arg0; *var_v0 != 0; var_v0++) {
-        if (*var_v0 != (s32*)1) {
-            **var_v0 += (s32)&_animation_entriesSegmentRomStart;
-        }
-    }
-}
-#else
 /**
  * PC: the two anim tables have DIFFERENT slot widths once pointers are no
  * longer 4 bytes: animation_table_ptrs1 is declared s32[] (consumers cast
@@ -304,7 +280,6 @@ void expand_ani_table_entries(s32** arg0)
     /* only ptrs2 (a real pointer array) comes through this signature */
     expand_ani_table_entries_stride(arg0, 1);
 }
-#endif
 
 void alloc_load_expand_ani_table(void)
 {
@@ -318,11 +293,6 @@ void alloc_load_expand_ani_table(void)
     ptr_animation_table = mempAllocBytesInBank(animsDataSegmentSize, MEMPOOL_PERMANENT);
 
     romCopy(ptr_animation_table, &_animation_dataSegmentRomStart, animsDataSegmentSize);
-#ifdef TARGET_N64
-    expand_ani_table_entries((s32*)&animation_table_ptrs1);
-    expand_ani_table_entries((s32*)&animation_table_ptrs2);
-#else
     expand_ani_table_entries_stride(&animation_table_ptrs1, 0); /* s32 slots */
     expand_ani_table_entries_stride(&animation_table_ptrs2, 1); /* pointer slots */
-#endif
 }

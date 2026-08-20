@@ -1,8 +1,6 @@
 #include <ultra64.h>
-#ifndef TARGET_N64
 #include <stdio.h>
 #include <stdlib.h>
-#endif
 #include "chrobjdata.h"
 #include "image.h"
 #include "math_asinfacosf.h"
@@ -15,9 +13,7 @@
 #include "quaternion.h"
 #include "tex.h"
 
-#ifndef TARGET_N64
 #include "port.h"
-#endif
 
 
 /***
@@ -30,13 +26,8 @@
 /* On 64-bit, ->Switches is a relocated native pointer array, not the file
  * base; these aliases keep the N64 token stream identical while routing
  * the PC build through the real blob base (filedata, set above). */
-#ifdef TARGET_N64
-#define OBJ_FILE_BASE_U8  ((u8 *) objheader->Switches)
-#define OBJ_FILE_BASE_S32 ((s32) objheader->Switches)
-#else
 #define OBJ_FILE_BASE_U8  ((u8 *)(uintptr_t) filedata)
 #define OBJ_FILE_BASE_S32 (filedata)
-#endif
 
 void sub_GAME_7F0762E0(ModelFileHeader *objheader, u8 *name, u8 *dst, struct texpool *buffer)
 {
@@ -51,15 +42,11 @@ void sub_GAME_7F0762E0(ModelFileHeader *objheader, u8 *name, u8 *dst, struct tex
     s32 filedata;
     s32 filenum;
 
-#ifdef TARGET_N64
-    filedata = (s32) objheader->Switches;
-#else
     /* On N64/PC32 the switch table sits at the start of the file, so
      * ->Switches doubles as the file base. The 64-bit build relocates the
      * switch table (4-byte slots can't hold native pointers), so the base
      * comes from the port's registry instead. */
     filedata = (s32) (uintptr_t) portModelFileBase(objheader);
-#endif
     filenum = fileGetIndex((char *) name);
 
     romremaining = get_rom_remaining_buffer_for_index(filenum);
@@ -67,11 +54,9 @@ void sub_GAME_7F0762E0(ModelFileHeader *objheader, u8 *name, u8 *dst, struct tex
     node = 0;
     modelIterateDisplayLists(objheader, &node, &gdl);
 
-#ifndef TARGET_N64
     if (getenv("PORT_LOAD_TRACE") != NULL) {
         fprintf(stderr, "port/rewrite: %s first-gdl=%p node=%p\n", name, (void *)gdl, (void *)node);
     }
-#endif
 
     if (gdl != 0)
     {
@@ -140,24 +125,18 @@ void load_object_fill_header(struct ModelFileHeader *objheader, u8 *name, u8* ds
     
     objheader->RootNode = (struct ModelNode *)&objheader->Textures[objheader->numtextures];
 
-#ifndef TARGET_N64
     /* PORT_PREPROCESS: the blob is big-endian on ROM */
     portPreprocessModelFile(objheader, filedata, 0x5000000, (u32)size);
     if (getenv("PORT_LOAD_TRACE") != NULL) {
         fprintf(stderr, "port/load: model %s -> %p (size %d)\n", name, filedata, size);
     }
-#endif
 
-#ifdef TARGET_N64
-    sub_GAME_7F075A90(objheader, 0x5000000, filedata);
-#else
     if (!IS_64_BIT) {
         sub_GAME_7F075A90(objheader, 0x5000000, filedata);
     }
     /* 64-bit: portPreprocessModelFile already rebuilt the node tree in
      * native layout with fully promoted pointers (the in-place promote
      * would read 4-byte blob slots through 8-byte struct fields). */
-#endif
     sub_GAME_7F0762E0(objheader, name, dst, buffer);
 }
 
