@@ -26,7 +26,7 @@ set -u
 cd "$(dirname "$0")/../.."
 
 BIN=${BIN:-build-port/ge007-port}
-GOLD=port/tests/goldens
+GOLD=${GOLD:-port/tests/goldens}   # 64-bit: GOLD=port/tests/goldens64 BIN=build-64/ge007-port
 MODE=${1:-check}
 T=$(mktemp -d)
 trap 'rm -rf "$T"; [ -n "${XVFB_PID:-}" ] && kill "$XVFB_PID" 2>/dev/null' EXIT
