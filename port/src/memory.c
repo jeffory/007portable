@@ -12,7 +12,11 @@
 #include <ultra64.h>
 #include <platform_info.h>
 #if IS_64_BIT
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <sys/mman.h>
+#endif
 #endif
 #include "port.h"
 
@@ -79,7 +83,9 @@ void portLowAllocStageScopeBegin(void)
     while (sStageAllocs != NULL) {
         struct lowAllocRec *r = sStageAllocs;
         sStageAllocs = r->next;
-#if IS_64_BIT
+#if IS_64_BIT && defined(_WIN32)
+        VirtualFree(r->ptr, 0, MEM_RELEASE);
+#elif IS_64_BIT
         munmap(r->ptr, r->size);
 #else
         free(r->ptr);
@@ -117,7 +123,26 @@ void portLowAllocStageScopeBegin(void)
 
 void *portLowAlloc(u32 size)
 {
-#if IS_64_BIT
+#if IS_64_BIT && defined(_WIN32)
+    /* same low-4GB guarantee via VirtualAlloc explicit-base scan */
+    static uintptr_t sHint = 0x40000000;
+    uintptr_t hint = sHint;
+    u32 aligned = (size + 0xFFFFu) & ~0xFFFFu;
+
+    while (hint + aligned <= 0xFFFFFFF0u) {
+        void *p = VirtualAlloc((void *)hint, size, MEM_COMMIT | MEM_RESERVE,
+                               PAGE_READWRITE);
+
+        if (p != NULL) {
+            sHint = (uintptr_t)p + aligned;
+            stageTrack(p, size);
+            return p;
+        }
+        hint += aligned > 0x1000000u ? aligned : 0x1000000u;
+    }
+    fprintf(stderr, "port: no low-4GB address space for %u bytes\n", size);
+    return NULL;
+#elif IS_64_BIT
     /* start clear of the -no-pie image (0x400000) and the brk heap */
     static uintptr_t sHint = 0x40000000;
     uintptr_t hint = sHint;
@@ -151,7 +176,10 @@ void portLowFree(void *ptr, u32 size)
         return;
     }
     stageUntrack(ptr);
-#if IS_64_BIT
+#if IS_64_BIT && defined(_WIN32)
+    (void)size;
+    VirtualFree(ptr, 0, MEM_RELEASE);
+#elif IS_64_BIT
     munmap(ptr, size);
 #else
     (void)size;

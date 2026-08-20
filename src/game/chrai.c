@@ -36,7 +36,7 @@
 #include "port.h"
 
 // hack? used to match as called with 2 args, but decompiled code takes 1
-extern s32 objectiveGetStatus_WEAK(s32 objectiveNum, s32);
+/* was a #pragma weak alias (objectiveGetStatus_WEAK): PE has none; call the real function (objective_status.h) */
 
 // bss
 /**
@@ -2562,7 +2562,7 @@ void                   ai(PropDefHeaderRecord *Entityp, PROP_TYPE EntityType)
                     /*  additional PD code for dificulty filtering
                      == OBJECTIVE_COMPLETE && objectivelvlGetSelectedDifficultyBits(ai->val[0]) & (1 << lvlGetSelectedDifficulty()))  *
                     */
-                    if (objectiveGetCount() > ai->OBJ_NUM && OBJECTIVESTATUS_COMPLETE == objectiveGetStatus_WEAK(ai->OBJ_NUM * 1, ai->OBJ_NUM))
+                    if (objectiveGetCount() > ai->OBJ_NUM && OBJECTIVESTATUS_COMPLETE == get_status_of_objective(ai->OBJ_NUM))
                     {
                         Offset = chraiGoToLabel(AiListp, Offset, ai->GOTOLABEL);
                     }

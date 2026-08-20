@@ -21,7 +21,7 @@ s32 osContInit(OSMesgQueue *mq, u8 *bitpattern, OSContStatus *status)
     status[0].type = CONT_TYPE_NORMAL;
     status[0].status = 0; /* no controller pak */
     for (i = 1; i < MAXCONTROLLERS; i++) {
-        status[i].errno = CONT_NO_RESPONSE_ERROR;
+        status[i].cont_errno = CONT_NO_RESPONSE_ERROR;
     }
     return 0;
 }
@@ -39,7 +39,7 @@ void osContGetQuery(OSContStatus *status)
     memset(status, 0, sizeof(OSContStatus) * MAXCONTROLLERS);
     status[0].type = CONT_TYPE_NORMAL;
     for (i = 1; i < MAXCONTROLLERS; i++) {
-        status[i].errno = CONT_NO_RESPONSE_ERROR;
+        status[i].cont_errno = CONT_NO_RESPONSE_ERROR;
     }
 }
 

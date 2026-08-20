@@ -27,6 +27,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#define portMkdir(path) _mkdir(path)
+#else
+#define portMkdir(path) mkdir(path, 0755)
+#endif
 #include <ultra64.h>
 #include "port.h"
 
@@ -263,8 +269,8 @@ static void bindWriteDefaultFile(const char *path)
         char parent[512];
         snprintf(parent, sizeof(parent), "%s", dir);
         slash = strrchr(parent, '/');
-        if (slash != NULL) { *slash = '\0'; mkdir(parent, 0755); }
-        mkdir(dir, 0755);
+        if (slash != NULL) { *slash = '\0'; portMkdir(parent); }
+        portMkdir(dir);
     }
 
     f = fopen(path, "w");
@@ -733,7 +739,7 @@ void portInputRead(OSContPad *pads)
     pads[0].button = buttons;
     pads[0].stick_x = (s8)clampStick(x);
     pads[0].stick_y = (s8)clampStick(y);
-    pads[0].errno = 0;
+    pads[0].cont_errno = 0;
 
     /* PORT_INPUT_TRACE=1: once a second, log every pressed key (scancode +
      * name) and the resulting pad state — for diagnosing per-machine

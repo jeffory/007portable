@@ -12,7 +12,11 @@
 #include "port.h"
 
 #if IS_64_BIT
+#ifdef _WIN32
+#include <windows.h>
+#else
 #include <ucontext.h>
+#endif
 #endif
 
 struct portconfig g_PortConfig = {
@@ -218,6 +222,25 @@ int main(int argc, char **argv)
      * is cooperative on this one context (threads.c is a no-op), so no
      * other stack ever runs game code. */
     {
+#ifdef _WIN32
+        /* No ucontext on Windows, and neither Fibers nor CreateThread let
+         * us place the stack explicitly. bossEntry never returns, so a
+         * one-way RSP pivot onto a portLowAlloc'd stack is all we need
+         * (shared code truncates addresses of stack locals through u32;
+         * statics are fine anywhere since the PIE gauntlet). */
+        u32 stackSize = 16 * 1024 * 1024;
+        u8 *stack = portLowAlloc(stackSize);
+        void *top;
+
+        if (stack == NULL) {
+            fprintf(stderr, "port: failed to set up low-memory game stack\n");
+            return 1;
+        }
+        top = (void *)(((uintptr_t)(stack + stackSize - 64)) & ~(uintptr_t)15);
+        __asm__ volatile("mov %0, %%rsp\n\tcall *%1"
+                         : : "r"(top), "r"(bossEntry) : "memory");
+        __builtin_unreachable();
+#else
         static ucontext_t mainCtx, bossCtx;
         u32 stackSize = 16 * 1024 * 1024;
         void *stack = portLowAlloc(stackSize);
@@ -231,6 +254,7 @@ int main(int argc, char **argv)
         bossCtx.uc_link = &mainCtx;
         makecontext(&bossCtx, bossEntry, 0);
         swapcontext(&mainCtx, &bossCtx); /* never returns (bossEntry loops) */
+#endif
     }
 #else
     bossEntry(); /* never returns */

@@ -149,7 +149,7 @@ void joyInit(void)
             g_ContData[i].samples[0].pads[j].button = 0;
             g_ContData[i].samples[0].pads[j].stick_x = 0;
             g_ContData[i].samples[0].pads[j].stick_y = 0;
-            g_ContData[i].samples[0].pads[j].errno = 0;
+            g_ContData[i].samples[0].pads[j].cont_errno = 0;
         }
     }
 }
@@ -227,7 +227,7 @@ void joyCheckStatus(void)
 
         for (i = 0; i < MAXCONTROLLERS; i++)
         {
-            if (g_ContStatus[i].errno & CONT_NO_RESPONSE_ERROR)
+            if (g_ContStatus[i].cont_errno & CONT_NO_RESPONSE_ERROR)
             {
                 slots -= 1 << i;
             }
@@ -251,7 +251,7 @@ void joyCheckStatus(void)
     {
         if ((g_ConnectedControllers & (1 << i))
             && (g_ContStatus[i].type & (CONT_ABSOLUTE | CONT_RELATIVE))
-            && !(g_ContStatus[i].errno))
+            && !(g_ContStatus[i].cont_errno))
         {
             // This seems like a typo in the original, doing a bitwise AND
             // between a logical test on the left and a bitshift on the right.
@@ -486,10 +486,10 @@ void joyPoll(void)
 
         for (i_s8 = 0; i_s8 < 4; i_s8++)
         {
-            if (((g_ContData[0].samples[g_ContData[0].nextlast].pads[i_s8].errno == 0) &&
-                 (g_ContData[0].samples[g_ContData[0].nextsecondlast].pads[i_s8].errno != 0)) ||
-                ((g_ContData[0].samples[g_ContData[0].nextlast].pads[i_s8].errno != 0) &&
-                 (g_ContData[0].samples[g_ContData[0].nextsecondlast].pads[i_s8].errno == 0)))
+            if (((g_ContData[0].samples[g_ContData[0].nextlast].pads[i_s8].cont_errno == 0) &&
+                 (g_ContData[0].samples[g_ContData[0].nextsecondlast].pads[i_s8].cont_errno != 0)) ||
+                ((g_ContData[0].samples[g_ContData[0].nextlast].pads[i_s8].cont_errno != 0) &&
+                 (g_ContData[0].samples[g_ContData[0].nextsecondlast].pads[i_s8].cont_errno == 0)))
             {
                 joyCheckStatus();
                 break;

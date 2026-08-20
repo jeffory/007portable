@@ -208,7 +208,11 @@ if(GE_HAVE_SDL2)
     target_include_directories(fast3d PRIVATE ${CMAKE_SOURCE_DIR}/port/compat32)
   endif()
   target_compile_options(fast3d PRIVATE -fno-strict-aliasing -fsigned-char -fwrapv)
-  target_link_libraries(fast3d PRIVATE ${GE_SDL2_TARGET} dl)
+  if(WIN32)
+    target_link_libraries(fast3d PRIVATE ${GE_SDL2_TARGET})
+  else()
+    target_link_libraries(fast3d PRIVATE ${GE_SDL2_TARGET} dl)
+  endif()
   list(APPEND PORT_SRC
     port/src/video.c
     port/src/system.c
@@ -323,7 +327,12 @@ endif()
 
 if(GE_HAVE_SDL2)
   target_compile_definitions(ge007-port PRIVATE GE_HAVE_FAST3D)
+  if(WIN32)
+  target_link_libraries(ge007-port PRIVATE fast3d ${GE_SDL2_TARGET})
+  target_link_options(ge007-port PRIVATE -mconsole) # keep stderr diagnostics
+else()
   target_link_libraries(ge007-port PRIVATE fast3d ${GE_SDL2_TARGET} dl)
+endif()
 endif()
 target_link_libraries(ge007-port PRIVATE m)
 

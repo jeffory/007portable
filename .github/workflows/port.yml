@@ -78,3 +78,24 @@ jobs:
       - name: Build
         run: ninja -C build-arm64
         # ROM-gated qemu smoke tests run locally: port/tests/run_arm64.sh
+
+  build-win64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: mingw-w64 toolchain
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+
+      # Ubuntu has no mingw SDL2 package; fetch the official mingw devel tarball
+      - name: SDL2 mingw devel
+        run: |
+          curl -sL https://github.com/libsdl-org/SDL/releases/download/release-2.30.9/SDL2-devel-2.30.9-mingw.tar.gz | tar xz
+          sudo cp -r SDL2-2.30.9/x86_64-w64-mingw32/* /usr/x86_64-w64-mingw32/
+
+      - name: Configure
+        run: cmake -B build-win64 -G Ninja --toolchain port/cmake/mingw64-toolchain.cmake
+
+      - name: Build
+        run: ninja -C build-win64
+        # ROM-gated Wine smoke test runs locally: port/tests/run_win64.sh
