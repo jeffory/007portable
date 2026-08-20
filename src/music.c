@@ -4,6 +4,8 @@
 #include "audi.h"
 #include <bondconstants.h>
 #include "decompress.h"
+
+s32 portAudioActive(void); /* port/src/audio.c */
 #include <platform_info.h>
 
 /* Huffman workspace for the CMIDI decompresses below. Rare passed a
@@ -800,6 +802,7 @@ void musicSeqPlayerInit(void)
  */
 void musicTrack1Play(s32 track)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     u32 trackSizeBytes;
     struct music_struct_b thing;
     u8 *temp_a0;
@@ -862,6 +865,7 @@ void musicTrack1Play(s32 track)
  */
 void musicTrack1Stop(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_sndBootswitchSound)
     {
         return;
@@ -897,6 +901,7 @@ u16 musicTrack1GetVolume(void)
  */
 void musicTrack1ApplySeqpVol(u16 volume)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_sndBootswitchSound)
     {
         return; /* PORT: sound disabled; seq players were never allocated */
@@ -922,6 +927,7 @@ void musicTrack1ApplySeqpVol(u16 volume)
  */
 void musicTrack1SaveCurrentVolumeAsTrackDefault(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     s32 i;
     
     g_musicDefaultTrackVolume[g_musicXTrack1CurrentTrackNum] = musicTrack1GetVolume();
@@ -943,6 +949,7 @@ void musicTrack1SaveCurrentVolumeAsTrackDefault(void)
  */
 void musicTrack1FadeOut(f32 fadeTime)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack1Fade >= MUSIC_FADESTATE_UNSET)
     {
         g_musicXTrack1PreFadeSavedVolume = musicTrack1GetVolume();
@@ -965,6 +972,7 @@ void musicTrack1FadeOut(f32 fadeTime)
  */
 void musicTrack1FadeIn(f32 fadeTime, u16 volume)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack1Fade <= MUSIC_FADESTATE_UNSET)
     {
         alCSPPlay(g_musicXTrack1SeqPlayer);
@@ -998,6 +1006,7 @@ void musicTrack1FadeIn(f32 fadeTime, u16 volume)
  */
 void musicTrack2Play(s32 track)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     u32 trackSizeBytes;
     struct music_struct_b thing;
     u8 *temp_a0;
@@ -1058,6 +1067,7 @@ void musicTrack2Play(s32 track)
  */
 void musicTrack2Stop(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_sndBootswitchSound)
     {
         return;
@@ -1094,6 +1104,7 @@ u16 musicTrack2GetVolume(void)
  */
 void musicTrack2ApplySeqpVol(u16 volume)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_sndBootswitchSound)
     {
         return; /* PORT: sound disabled; seq players were never allocated */
@@ -1118,6 +1129,7 @@ void musicTrack2ApplySeqpVol(u16 volume)
  */
 void musicTrack2SaveCurrentVolumeAsTrackDefault(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     s32 i;
     
     g_musicDefaultTrackVolume[g_musicXTrack2CurrentTrackNum] = musicTrack2GetVolume();
@@ -1139,6 +1151,7 @@ void musicTrack2SaveCurrentVolumeAsTrackDefault(void)
  */
 void musicTrack2FadeOut(f32 fadeTime)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack2Fade >= MUSIC_FADESTATE_UNSET)
     {
         g_musicXTrack2PreFadeSavedVolume = musicTrack2GetVolume();
@@ -1161,6 +1174,7 @@ void musicTrack2FadeOut(f32 fadeTime)
  */
 void musicTrack2FadeIn(f32 fadeTime, u16 volume)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack2Fade <= MUSIC_FADESTATE_UNSET)
     {
         alCSPPlay(g_musicXTrack2SeqPlayer);
@@ -1194,6 +1208,7 @@ void musicTrack2FadeIn(f32 fadeTime, u16 volume)
  */
 void musicTrack3Play(s32 track)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     u32 trackSizeBytes;
     struct music_struct_b thing;
     u8 *temp_a0;
@@ -1254,6 +1269,7 @@ void musicTrack3Play(s32 track)
  */
 void musicTrack3Stop(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_sndBootswitchSound)
     {
         return;
@@ -1290,6 +1306,7 @@ u16 musicTrack3GetVolume(void)
  */
 void musicTrack3ApplySeqpVol(u16 volume)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_sndBootswitchSound)
     {
         return; /* PORT: sound disabled; seq players were never allocated */
@@ -1314,6 +1331,7 @@ void musicTrack3ApplySeqpVol(u16 volume)
  */
 void musicTrack3SaveCurrentVolumeAsTrackDefault(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     s32 i;
     
     g_musicDefaultTrackVolume[g_musicXTrack3CurrentTrackNum] = musicTrack3GetVolume();
@@ -1335,6 +1353,7 @@ void musicTrack3SaveCurrentVolumeAsTrackDefault(void)
  */
 void musicTrack3FadeOut(f32 fadeTime)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack3Fade >= MUSIC_FADESTATE_UNSET)
     {
         g_musicXTrack3PreFadeSavedVolume = musicTrack3GetVolume();
@@ -1357,6 +1376,7 @@ void musicTrack3FadeOut(f32 fadeTime)
  */
 void musicTrack3FadeIn(f32 fadeTime, u16 volume)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack3Fade <= MUSIC_FADESTATE_UNSET)
     {
         alCSPPlay(g_musicXTrack3SeqPlayer);
@@ -1382,6 +1402,7 @@ void musicTrack3FadeIn(f32 fadeTime, u16 volume)
  */
 void musicFadeTick(void)
 {
+    if (!portAudioActive()) { return; } /* PORT: synthesis not up */
     if (g_musicXTrack1Fade)
     {
         u16 t0;

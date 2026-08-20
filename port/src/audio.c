@@ -39,6 +39,14 @@ static s32 sFrameSize;
 static s32 sMaxFrameSize;
 static s32 sStarted;
 
+/* Music/SFX entry points in shared code no-op when synthesis never came up
+ * (64-bit builds without PORT_64_AUDIO): their AL players/queues are
+ * uninitialized and e.g. alCSPStop would chase a garbage event queue. */
+s32 portAudioActive(void)
+{
+    return sStarted;
+}
+
 #ifdef GE_HAVE_SDL2
 static SDL_AudioDeviceID sDev;
 #endif

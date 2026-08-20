@@ -1,4 +1,5 @@
 #include <ultra64.h>
+#include <platform_info.h>
 #include "include/limits.h"
 #include <bondconstants.h>
 #include <bondtypes.h>
@@ -1613,7 +1614,7 @@ Gfx *set_enviro_fog_for_items_in_solo_watch_menu(Gfx *gdl, ITEM_IDS itemid, Mtxf
     /* same bss-carving template as D_80035CC0 above: D_80035D04[] = {1,3,0,...} */
     ModelRenderData renderdata = { NULL, TRUE, 3 };
     ModelHeader model;
-    u8 spb8[0x80];
+    u8 spb8[DOUBLE_SIZE_ON_64_BIT(0x80)]; /* rwdata block: native units double */
     s32 padb4;
     Mtxf sp74;
     Mtxf *matrices;
@@ -1711,11 +1712,14 @@ Gfx *set_enviro_fog_for_items_in_solo_watch_menu(Gfx *gdl, ITEM_IDS itemid, Mtxf
 
     if (bodymodel->numSwitches >= 19)
     {
-        for (j = 0; j != 20; j += 4)
+        /* was byte-offset walks over the Switches pointer table
+         * ((u8*)Switches + j + 0x48 / + 0x5c, j += 4): entries 18..22 and
+         * 23..27 at the 32-bit stride — mis-strides 8-byte entries. */
+        for (j = 0; j < 5; j++)
         {
-            if ((*((ModelNode **) ((((u8 *) bodymodel->Switches) + j) + 0x48))) != NULL)
+            if (bodymodel->Switches[18 + j] != NULL)
             {
-                rwdata = modelGetNodeRwData((Model *) &model, *((ModelNode **) ((((u8 *) bodymodel->Switches) + j) + 0x48)));
+                rwdata = modelGetNodeRwData((Model *) &model, bodymodel->Switches[18 + j]);
 
                 if (rwdata != NULL)
                 {
@@ -1723,9 +1727,9 @@ Gfx *set_enviro_fog_for_items_in_solo_watch_menu(Gfx *gdl, ITEM_IDS itemid, Mtxf
                 }
             }
 
-            if ((*((ModelNode **) ((((u8 *) bodymodel->Switches) + j) + 0x5c))) != NULL)
+            if (bodymodel->Switches[23 + j] != NULL)
             {
-                rwdata = modelGetNodeRwData((Model *) &model, *((ModelNode **) ((((u8 *) bodymodel->Switches) + j) + 0x5c)));
+                rwdata = modelGetNodeRwData((Model *) &model, bodymodel->Switches[23 + j]);
 
                 if (rwdata != NULL)
                 {
@@ -1834,7 +1838,7 @@ Gfx* watchRenderController(Gfx* gdl, Mtxf* basemtx, s32 envcolour, bool animateb
     s32 j;
     s32 offset;
     f32 angle;
-    u32 rwdata[26];
+    u32 rwdata[26 * (sizeof(void *) / 4)]; /* rwdata block: native units double */
     u32 pad2;
     Mtxf sp41c;
     Mtxf sp3dc;

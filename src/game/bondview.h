@@ -690,109 +690,18 @@ struct player
    */
   f32 pause_watch_related_scaled;
 
-  s32 something_with_watch_object_instance;
-
-  s32 field_234;
-  s32 field_238;
-  s32 field_23C;
-  s32 field_240;
-  f32 watch_scale_destination;
-  s32 field_248;
-  s32 field_24C;
-  s32 field_250;
-  s32 field_254;
-
   /**
-   * Some kind of adjustment applied before scaling to set pause_watch_related_scaled.
-   * Offset 0x0258.
+   * The watch's Model instance and its rwdata block. Rare carved these out
+   * of the player as raw s32 fields, accessed via (u8*)player+0x230 casts
+   * and alias names (watch_scale_destination == watchModel.scale,
+   * pause_watch_related_adjust == the attachedto_objinst slot read as f32,
+   * field_23C == watchModel.render_pos). Real members so the layout also
+   * fits native (64-bit) Model/pointer sizes.
+   * Offsets 0x0230 / 0x02EC (32-bit).
    */
-  f32 pause_watch_related_adjust;
-  s32 field_25C;
-  s32 field_260;
-  s32 field_264;
-  s32 field_268;
-  s32 field_26C;
-  s32 field_270;
-  s32 field_274;
-  s32 field_278;
-  s32 field_27C;
-  s32 field_280;
-  s32 field_284;
-  s32 field_288;
-  s32 field_28C;
-  s32 field_290;
-  s32 field_294;
-  s32 field_298;
-  s32 field_29C;
-  s32 field_2A0;
-  s32 field_2A4;
-  s32 field_2A8;
-  s32 field_2AC;
-  s32 field_2B0;
-  s32 field_2B4;
-  s32 field_2B8;
-  s32 field_2BC;
-  s32 field_2C0;
-  s32 field_2C4;
-  s32 field_2C8;
-  s32 field_2CC;
-  s32 field_2D0;
-  s32 field_2D4;
-  s32 field_2D8;
-  s32 field_2DC;
-  s32 field_2E0;
-  s32 field_2E4;
-  s32 field_2E8;
-  s32 field_2EC;
-  s32 field_2F0;
-  s32 field_2F4;
-  s32 field_2F8;
-  s32 field_2FC;
-  s32 field_300;
-  s32 field_304;
-  s32 field_308;
-  s32 field_30C;
-  s32 field_310;
-  s32 field_314;
-  s32 field_318;
-  s32 field_31C;
-  s32 field_320;
-  s32 field_324;
-  s32 field_328;
-  s32 field_32C;
-  s32 field_330;
-  s32 field_334;
-  s32 field_338;
-  s32 field_33C;
-  s32 field_340;
-  s32 field_344;
-  s32 field_348;
-  s32 field_34C;
-  s32 field_350;
-  s32 field_354;
-  s32 field_358;
-  s32 field_35C;
-  s32 field_360;
-  s32 field_364;
-  s32 field_368;
-  s32 field_36C;
-  s32 field_370;
-  s32 field_374;
-  s32 field_378;
-  s32 field_37C;
-  s32 field_380;
-  s32 field_384;
-  s32 field_388;
-  s32 field_38C;
-  s32 field_390;
-  s32 field_394;
-  s32 field_398;
-  s32 field_39C;
-  s32 field_3A0;
-  s32 field_3A4;
-  s32 field_3A8;
-  s32 field_3AC;
-  s32 field_3B0;
+  Model watchModel;
+  u8    watchRwData[DOUBLE_SIZE_ON_64_BIT(0xC8)];
+
 
   /**
    * Copy of buttons pressed.
