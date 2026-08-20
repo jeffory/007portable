@@ -171,6 +171,7 @@ set(PORT_SRC
   port/src/preprocess.c
   port/src/preprocess_model.c
   port/src/audio.c
+  port/src/paths.c
   port/src/mixer.c
   port/src/preprocess_audio.c
   port/src/ultra/mq.c

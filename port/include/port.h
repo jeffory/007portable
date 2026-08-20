@@ -7,11 +7,12 @@
  * ifdefs in shared sources may include this.
  */
 
+#include <stddef.h>
 #include <ultra64.h>
 
 /* --- main.c / options ----------------------------------------------------- */
 struct portconfig {
-    const char *rompath;    /* default "data/ge007.u.z64" */
+    const char *rompath;    /* default: <base>/ge007.u.z64 (see paths.c) */
     int selftest;           /* --selftest: load+CRC a known file, then exit */
     int stubstage;          /* --stub-stage: skip lvlStageLoad, empty dlists */
     int verbose;            /* --verbose: extra logging */
@@ -117,6 +118,11 @@ void portSwapCMidiHdr(void *data);
 void portAudioFrame(void);
 void portAudioPump(void);
 void portIntMaskInit(void); /* arm osSetIntMask as a real lock (misc.c) */
+
+/* --- file locations (paths.c) ----------------------------------------------
+ * "<base>/<name>": base is PORT_DATA_DIR, else ./data if it exists
+ * (portable layout), else the per-user SDL pref dir (installed layout). */
+const char *portPathFile(char *buf, size_t len, const char *name);
 
 /* --- input backend --------------------------------------------------------- */
 void portInputInit(void);

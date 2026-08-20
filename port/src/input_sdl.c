@@ -252,8 +252,7 @@ static const char *bindConfigPath(char *buf, size_t len)
         if (home == NULL || home[0] == '\0') {
             /* no HOME (headless/container runs): keep the config beside the
              * game data instead of littering ./.config into the cwd */
-            snprintf(buf, len, "data/input.ini");
-            return buf;
+            return portPathFile(buf, len, "input.ini");
         }
         snprintf(buf, len, "%s/.config/ge007/input.ini", home);
     }

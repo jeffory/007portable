@@ -20,8 +20,9 @@ static int sLoaded;
 
 static const char *eepromPath(void)
 {
+    static char buf[1024];
     const char *p = getenv("PORT_EEPROM");
-    return p != NULL ? p : "data/eeprom.bin";
+    return p != NULL ? p : portPathFile(buf, sizeof(buf), "eeprom.bin");
 }
 
 static void eepromEnsureLoaded(void)

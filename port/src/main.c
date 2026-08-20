@@ -20,7 +20,7 @@
 #endif
 
 struct portconfig g_PortConfig = {
-    "data/ge007.u.z64", /* rompath */
+    NULL,               /* rompath: <base>/ge007.u.z64 unless --rom */
     0,                  /* selftest */
     0,                  /* stubstage */
     0,                  /* verbose */
@@ -169,6 +169,12 @@ int main(int argc, char **argv)
 
     parseArgs(argc, argv);
 
+    {
+        static char rompath[1024];
+        if (g_PortConfig.rompath == NULL) {
+            g_PortConfig.rompath = portPathFile(rompath, sizeof(rompath), "ge007.u.z64");
+        }
+    }
     if (portRomLoad(g_PortConfig.rompath) != 0) {
         return 1;
     }
