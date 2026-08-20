@@ -1201,6 +1201,19 @@ void frontUpdateControlStickPosition(void) {
         }
     }
 
+    /* PORT: the mouse drives the hand cursor directly (screen convention,
+     * +dy = down — the mouselook Y mapping never applies here); left-click
+     * is Z which every frontend accept check treats like A. The stick/WASD
+     * path below still works alongside. */
+    {
+        extern void portInputMenuMouse(f32 *mdx, f32 *mdy);
+        f32 mdx, mdy;
+
+        portInputMenuMouse(&mdx, &mdy);
+        cursor_h_pos += mdx;
+        cursor_v_pos += mdy;
+    }
+
     if (stickx > 0) {
         cursor_h_pos += (f32)(( (f32)stickx * 0.075f + 0.5f) * g_GlobalTimerDelta);
     }

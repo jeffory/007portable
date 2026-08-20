@@ -59,6 +59,8 @@ static int sDirectAim = -1;
 static int sAimMode;
 static float sLookAccumX;
 static float sLookAccumY;
+static float sMenuAccumX; /* menu-cursor deltas: screen convention, +y down */
+static float sMenuAccumY;
 
 void portInputSetAimMode(s32 aiming)
 {
@@ -74,7 +76,24 @@ s32 portInputConsumeMouseLook(f32 *dtheta, f32 *dverta)
     *dverta = sLookAccumY;
     sLookAccumX = 0.0f;
     sLookAccumY = 0.0f;
+    /* mirror of portInputMenuMouse's drain: gameplay motion must not pile
+     * up as a menu-cursor jump on the next menu entry */
+    sMenuAccumX = sMenuAccumY = 0.0f;
     return 1;
+}
+
+/* Menu cursor: the frontend's hand cursor follows the mouse directly
+ * (front.c frontUpdateControlStickPosition). Screen convention: +dx right,
+ * +dy DOWN — never look-inverted, whatever PORT_MOUSE_INVERT says.
+ * Also drains the look accumulators: menus and gameplay are mutually
+ * exclusive, and mouse motion during menus must not land as a view jerk
+ * on the first gameplay tick. */
+void portInputMenuMouse(f32 *dx, f32 *dy)
+{
+    *dx = sMenuAccumX;
+    *dy = sMenuAccumY;
+    sMenuAccumX = sMenuAccumY = 0.0f;
+    sLookAccumX = sLookAccumY = 0.0f;
 }
 
 /* PC-style weapon switching: the scrollwheel (and weapon_next/weapon_prev
@@ -182,8 +201,8 @@ static const char *const sActionHelp[IN_COUNT] = {
 
 static const char *const sDefaultBindings[IN_COUNT] = {
     "W", "S", "A", "D",
-    "Space, Mouse1", "E, Mouse2",
-    "X, F", "C, R", "Return", "Q",
+    "Space, Mouse1", "Mouse2, Left Shift",
+    "X, F", "E, R, C", "Return", "Q",
     "I", "K", "J", "L",
     "Up", "Down", "Left", "Right",
     "F1",
@@ -726,6 +745,10 @@ void portInputRead(OSContPad *pads)
                 const char *e = getenv("PORT_DIRECT_AIM");
                 sDirectAim = (e == NULL) || (e[0] != '0');
             }
+            /* menu cursor deltas (screen convention, uninverted) */
+            sMenuAccumX += (f32)dx * sMouseSens * 0.5f;
+            sMenuAccumY += (f32)dy * sMouseSens * 0.5f;
+
             if (sDirectAim > 0 && !sAimMode) {
                 /* accumulate in degrees for the bondview direct injection;
                  * dy > 0 (mouse down) pitches down = vv_verta decreases */

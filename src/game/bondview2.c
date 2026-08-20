@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include <math.h>
+#include <stdlib.h> /* PORT: getenv/atoi (PORT_TEST_POSEND) */
 #include <bondtypes.h>
 #include <boss.h>
 #include <fr.h>
@@ -6780,6 +6781,28 @@ void MoveBond(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
         }
 
         g_CurrentPlayer->vv_theta = stack_padding_9;
+    }
+
+    /* PORT_TEST_POSEND=<tick>: after N gameplay ticks jump to the first
+     * setup cutscene camera — exercises the end-of-level (outro) camera
+     * path without playing the mission out. Testing aid for the CAMERAPOS
+     * swap-shape fix (preprocess_setup.c). */
+    {
+        extern CutsceneRecord *g_PortFirstCutscene; /* prop.c */
+        extern CutsceneRecord *gBondViewCutscene;
+        static s32 posendTick = -2;
+        static s32 posendTicks;
+
+        if (posendTick == -2) {
+            const char *e = getenv("PORT_TEST_POSEND");
+            posendTick = (e != NULL) ? atoi(e) : -1;
+        }
+        if (posendTick > 0 && ++posendTicks == posendTick && g_PortFirstCutscene != NULL) {
+            g_CameraLookAtBondPad = NULL;
+            gBondViewCutscene = g_PortFirstCutscene;
+            dword_CODE_bss_80079A18 = 0;
+            bondviewSetCameraMode(CAMERAMODE_POSEND);
+        }
     }
 
     /* PORT: direct mouse aim — apply the accumulated mouse deltas straight

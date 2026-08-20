@@ -1,5 +1,10 @@
 #include <ultra64.h>
 #include <memp.h>
+#include <stdio.h>  /* PORT: PORT_CAMERAPOS_TRACE */
+#include <stdlib.h>
+
+/* PORT_TEST_POSEND: first cutscene camera of the loaded setup (bondview2.c) */
+struct CutsceneRecord *g_PortFirstCutscene;
 #include "game/mp_weapon.h"
 #include "game/bondview_r.h"
 #include "bg.h"
@@ -1816,11 +1821,23 @@ void proplvreset2(enum LEVELID stageId)
                     {
                         struct CutsceneRecord *pdef_cam = (struct CutsceneRecord *) phead;
 
+                        if (g_PortFirstCutscene == NULL) {
+                            g_PortFirstCutscene = pdef_cam;
+                        }
                         pdef_cam->pos.f[0] = (*((s32 *) (&pdef_cam->pos.f[0]))) / 100.0f;
                         pdef_cam->pos.f[1] = (*((s32 *) (&pdef_cam->pos.f[1]))) / 100.0f;
                         pdef_cam->pos.f[2] = (*((s32 *) (&pdef_cam->pos.f[2]))) / 100.0f;
                         pdef_cam->theta = (*((s32 *) (&pdef_cam->theta))) / M_U16_MAX_VALUE_F;
                         pdef_cam->verta = (*((s32 *) (&pdef_cam->verta))) / M_U16_MAX_VALUE_F;
+                        /* PORT_CAMERAPOS_TRACE: cutscene cameras looked sane
+                         * exactly once already (the swap-shape bug above) */
+                        if (getenv("PORT_CAMERAPOS_TRACE") != NULL) {
+                            fprintf(stderr,
+                                    "port/camerapos: pad %u pos %.1f %.1f %.1f theta %.3f verta %.3f\n",
+                                    pdef_cam->pad, pdef_cam->pos.f[0],
+                                    pdef_cam->pos.f[1], pdef_cam->pos.f[2],
+                                    pdef_cam->theta, pdef_cam->verta);
+                        }
                         break;
                     }
                     case PROPDEF_OBJECTIVE_START:

@@ -244,6 +244,14 @@ static s32 swapPropDef(PropDefHeaderRecord *pdef)
             case PROPDEF_OBJECTIVE_NULL:
             case PROPDEF_RENAME:
             case PROPDEF_LOCK_DOOR:
+            case PROPDEF_CAMERAPOS:
+                /* CAMERAPOS (CutsceneRecord): the body is five s32
+                 * fixed-point words (pos x100, angles x65535 — prop.c
+                 * converts to float at load). The ObjectRecord half-swap
+                 * was corrupting pos.x at offset 4: every end-of-level
+                 * cutscene camera teleported to a garbage X (the
+                 * "half black / half blue" outro). Pad-based intro
+                 * cameras never read the field, hiding it. */
                 swapWords(rec + 4, words - 1);
                 break;
             default:

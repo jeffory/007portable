@@ -39,3 +39,9 @@ s32 portInputConsumeWeaponSelect(void)
 {
     return 0;
 }
+
+void portInputMenuMouse(f32 *dx, f32 *dy)
+{
+    *dx = 0.0f;
+    *dy = 0.0f;
+}
