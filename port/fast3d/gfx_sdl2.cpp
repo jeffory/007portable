@@ -163,6 +163,9 @@ static void gfx_sdl_init(const struct GfxWindowInitSettings *set) {
     u32 verstart = 1;
     const u32 verend = sizeof(glver) / sizeof(*glver);
     const char *verstr = sysArgGetString("--gl-version");
+    if (!verstr || !*verstr) {
+        verstr = SDL_getenv("PORT_GL_VERSION"); /* e.g. "3.0 es" for handheld GLES */
+    }
     if (verstr && *verstr) {
         // user override
         glver[0][2] = strstr(verstr, "core") ? SDL_GL_CONTEXT_PROFILE_CORE :
