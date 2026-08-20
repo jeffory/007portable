@@ -1493,12 +1493,12 @@ void gunRenderFirstPersonGunModels(Gfx **gdlptr)
     s32 handnum;
     Model *model;
  
-    renderdata = *(ModelRenderData *)&D_80035CC0;
     {
-        /* On N64, D_80035CC0 is contiguous with D_80035CC4[] = {1,3,0,...}
-         * so this cast reads a template {basemtx=NULL, zbufferenabled=TRUE,
-         * flags=3, rest 0}. On PC the symbols aren't adjacent (bss carving),
-         * so the copy above reads garbage flags and the gun never draws. */
+        /* On N64 this template was read as *(ModelRenderData *)&D_80035CC0,
+         * relying on D_80035CC0 being contiguous with D_80035CC4[] =
+         * {1,3,0,...} — i.e. {basemtx=NULL, zbufferenabled=TRUE, flags=3,
+         * rest 0}. Spelled out directly (bss carving; the aliased read is
+         * OOB UB and read garbage flags under separate symbols). */
         static const ModelRenderData sGunRenderTemplate = { NULL, TRUE, 3 };
         renderdata = sGunRenderTemplate;
     }

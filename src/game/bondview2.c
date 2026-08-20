@@ -1099,7 +1099,10 @@ void bondviewCalcIntroSwirlCamera(s32 index, f32 time, coord3d *pos, coord3d *lo
             entry = loopbase;
             loopbase = base + (u32) index;
             target.swirl = entry + i;
-            dst = &pointbuf[i * 3];
+            /* was &pointbuf[i*3] with i starting at -1 and stores at dst[3..5]
+             * — same bytes, but forming &pointbuf[-3] is UB (UBSan trips).
+             * Base on the target segment and store at dst[0..2] instead. */
+            dst = &pointbuf[(i + 1) * 3];
 
             if (i < 0)
             {
@@ -1128,17 +1131,17 @@ void bondviewCalcIntroSwirlCamera(s32 index, f32 time, coord3d *pos, coord3d *lo
             if (entry->bitflags & 2)
             {
                 target.player = g_CurrentPlayer;
-                dst[3] = (entry->offsetfromBond[2].fval * target.player->field_488.theta_transform.f[0])
+                dst[0] = (entry->offsetfromBond[2].fval * target.player->field_488.theta_transform.f[0])
                     + (entry->offsetfromBond[0].fval * target.player->field_488.theta_transform.f[2]);
-                dst[4] = entry->offsetfromBond[1].fval;
-                dst[5] = (entry->offsetfromBond[2].fval * target.player->field_488.theta_transform.f[2])
+                dst[1] = entry->offsetfromBond[1].fval;
+                dst[2] = (entry->offsetfromBond[2].fval * target.player->field_488.theta_transform.f[2])
                     - (entry->offsetfromBond[0].fval * target.player->field_488.theta_transform.f[0]);
             }
             else
             {
-                dst[3] = entry->offsetfromBond[0].fval;
-                dst[4] = entry->offsetfromBond[1].fval;
-                dst[5] = entry->offsetfromBond[2].fval;
+                dst[0] = entry->offsetfromBond[0].fval;
+                dst[1] = entry->offsetfromBond[1].fval;
+                dst[2] = entry->offsetfromBond[2].fval;
             }
         }
     }
@@ -7627,7 +7630,11 @@ void MoveBond(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
                         if (sp6C->actiontype == ACT_DIE)
                         {
 #if defined(VERSION_US)
-                            if ((sp6C->chrflags << 7) >= 0)
+                            /* bit-24 test: IDO enums are signed so the
+                             * shifted sign check worked on N64; GCC makes
+                             * CHRFLAG unsigned and `>= 0` always true.
+                             * Cast restores the real check. */
+                            if ((s32)(sp6C->chrflags << 7) >= 0)
 #endif
 #if defined(VERSION_JP) || defined(VERSION_EU)
                             if ((sp6C->chrflags << 7) >= 0 && lvlGetControlsLockedFlag() == 0)

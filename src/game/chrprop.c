@@ -3488,7 +3488,11 @@ void sub_GAME_7F03ECC0(f32 x1, f32 x2, f32 y1, f32 y2, f32 z1, f32 z2, Mtxf *m, 
     s32 maxxi = 0;
     s32 minzi;
     s32 maxzi = 0;
-    s32 rem[4];
+    /* was rem[4]: the filterloop below keeps every 0..7 index that is not
+     * one of the four extremes — when extremes coincide (degenerate boxes)
+     * up to 7 survive, overflowing into the IDO frame slack on N64 and
+     * into live locals under -O2 (UBSan-caught). Size for the worst case. */
+    s32 rem[8];
     s32 cnt;
     f64 x1d = x1;
     f64 x2d = x2;

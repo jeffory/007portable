@@ -42,6 +42,15 @@ endif()
 # contraction) — cross-arch goldens depend on it.
 add_compile_options(-ffp-contract=off)
 
+# The enum-signedness disease detector: IDO enums are always signed int,
+# GCC picks unsigned when no member is negative, silently flipping
+# `x >= 0` / `x < 0` checks into constants (four gameplay bugs so far).
+# -Wtype-limits flags exactly that. Known remaining warnings: the
+# textrelated.c `*text < 0x80` family — always-true under -fsigned-char
+# on IDO too (dead JPN multibyte paths), so they are noise, not bugs.
+# Don't let the warning count grow.
+add_compile_options(-Wtype-limits)
+
 # ---------------------------------------------------------------------------
 # Platform backend: SDL2 when devel headers are present, headless null
 # backend otherwise (enough for --selftest and CI).

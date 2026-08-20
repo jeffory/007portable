@@ -38,9 +38,8 @@ void alSynStartVoiceParams(ALSynth *s, ALVoice *v, ALWaveTable *w,
         update = (ALStartParamAlt *)__allocParam();
         ALFailIf(update == 0, ERR_ALSYN_NO_UPDATE);
 
-	if (fxmix < 0)
-            fxmix = -fxmix;
-        
+        /* (dead `if (fxmix < 0)` removed: u8 param) */
+
         /*
          * set offset and fxmix data
          */

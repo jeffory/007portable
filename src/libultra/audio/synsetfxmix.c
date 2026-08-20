@@ -39,10 +39,7 @@ void alSynSetFXMix(ALSynth *synth, ALVoice *v, u8 fxmix)
          */
         update->delta  = synth->paramSamples + v->pvoice->offset;
         update->type   = AL_FILTER_SET_FXAMT;
-	if (fxmix < 0)
-	    update->data.i = -fxmix;
-	else
-	    update->data.i = fxmix;
+	update->data.i = fxmix; /* u8 param: the negative branch was dead code */
         update->next   = 0;
 
         f = v->pvoice->channelKnob;

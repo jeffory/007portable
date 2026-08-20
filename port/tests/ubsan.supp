@@ -1,0 +1,14 @@
+# UBSan suppressions for the two DELIBERATE UB patterns that survive
+# phase 1 (both scheduled to disappear with the phase-3 native-pointer
+# memory model — see the Portable Roadmap):
+#
+# - bnkf.c promotes bank-file offsets to pointers via u32 wraparound
+#   arithmetic (offsets rebased in place, the core 32-bit-blob strategy).
+# - chrprop.c reads prop->rooms[4..6] past the u8[4] array ON PURPOSE —
+#   Rare lets the room list spill into the following field (engine
+#   semantics; scans are capped at 7 since the M3 fix).
+#
+# Usage:
+#   UBSAN_OPTIONS=suppressions=port/tests/ubsan.supp ./ge007-port ...
+pointer-overflow:bnkf.c
+bounds:chrprop.c

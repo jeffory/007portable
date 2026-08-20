@@ -5429,8 +5429,13 @@ void sub_GAME_7F0BA2D4(coord3d *bbmin, coord3d *bbmax, s32 *room_list, s32 *coun
                         goto next_portal;
                     }
                     
-                    portal_min = *(coord3d *) &D_80044904;
-                    portal_max = *(coord3d *) &D_80044910;
+                    /* was *(coord3d *)&D_80044904 / &D_80044910 — reading
+                     * three adjacent s32 statics (FLT_MAX / -FLT_MAX bit
+                     * patterns) through a 12-byte cast. Spell out the
+                     * bounds-seed values instead of relying on data-layout
+                     * adjacency (OOB UB). */
+                    portal_min.f[0] = portal_min.f[1] = portal_min.f[2] = 3.402823466e+38f;
+                    portal_max.f[0] = portal_max.f[1] = portal_max.f[2] = -3.402823466e+38f;
                     portal_pts = g_BgPortals[portal_idx].offset_portal;
                     
                     for (j = 0; j < portal_pts->numPoints; j++)
