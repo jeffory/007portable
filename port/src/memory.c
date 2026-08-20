@@ -22,6 +22,78 @@
 
 static u8 *sArena;
 
+/* --- stage-scoped allocation tracking (the stage-reload leak fix) ----------
+ * Everything portLowAlloc'd after a stage load begins (setup/stan/model
+ * rebuilds, texture scratch, lazily loaded weapon models) lives exactly as
+ * long as that stage: the next lvlStageLoad frees the whole list before
+ * loading. Boot-time allocations (ROM, arena, game stack, menu/logo
+ * models, audio banks) happen before the first stage load and stay
+ * permanent. Works for both the mmap (64-bit) and malloc (32-bit) paths. */
+struct lowAllocRec {
+    void *ptr;
+    u32 size;
+    struct lowAllocRec *next;
+};
+static struct lowAllocRec *sStageAllocs;
+static s32 sStageScope;
+static u32 sStageBytes;
+
+static void stageTrack(void *ptr, u32 size)
+{
+    struct lowAllocRec *r;
+
+    if (!sStageScope || ptr == NULL) {
+        return;
+    }
+    r = malloc(sizeof(*r));
+    if (r == NULL) {
+        return; /* untracked: leaks like before, never breaks */
+    }
+    r->ptr = ptr;
+    r->size = size;
+    r->next = sStageAllocs;
+    sStageAllocs = r;
+    sStageBytes += size;
+}
+
+static void stageUntrack(void *ptr)
+{
+    struct lowAllocRec **pp;
+
+    for (pp = &sStageAllocs; *pp != NULL; pp = &(*pp)->next) {
+        if ((*pp)->ptr == ptr) {
+            struct lowAllocRec *r = *pp;
+            *pp = r->next;
+            sStageBytes -= r->size;
+            free(r);
+            return;
+        }
+    }
+}
+
+void portLowAllocStageScopeBegin(void)
+{
+    u32 freed = sStageBytes;
+    s32 n = 0;
+
+    while (sStageAllocs != NULL) {
+        struct lowAllocRec *r = sStageAllocs;
+        sStageAllocs = r->next;
+#if IS_64_BIT
+        munmap(r->ptr, r->size);
+#else
+        free(r->ptr);
+#endif
+        free(r);
+        n++;
+    }
+    sStageBytes = 0;
+    sStageScope = 1;
+    if (n != 0 && getenv("PORT_LOAD_TRACE") != NULL) {
+        fprintf(stderr, "port/mem: freed %d stage allocations (%u bytes)\n", n, freed);
+    }
+}
+
 /**
  * Allocate memory the game may take pointers into.
  *
@@ -57,6 +129,7 @@ void *portLowAlloc(u32 size)
 
         if (p != MAP_FAILED) {
             sHint = (uintptr_t)p + aligned;
+            stageTrack(p, size);
             return p;
         }
         hint += aligned > 0x1000000u ? aligned : 0x1000000u; /* skip >=16MB */
@@ -64,7 +137,11 @@ void *portLowAlloc(u32 size)
     fprintf(stderr, "port: no low-4GB address space for %u bytes\n", size);
     return NULL;
 #else
-    return malloc(size);
+    {
+        void *p = malloc(size);
+        stageTrack(p, size);
+        return p;
+    }
 #endif
 }
 
@@ -73,6 +150,7 @@ void portLowFree(void *ptr, u32 size)
     if (ptr == NULL) {
         return;
     }
+    stageUntrack(ptr);
 #if IS_64_BIT
     munmap(ptr, size);
 #else

@@ -314,6 +314,11 @@ void lvlMusicPlayStageTrackOrRandom(void)
  **/
 void lvlStageLoad(s32 stage)
 {
+    /* PORT: everything portLowAlloc'd from here on (setup/stan/model
+     * rebuilds, texture scratch, in-stage lazy loads) is freed by the NEXT
+     * stage load — the stage-reload leak fix (see port/src/memory.c). */
+    portLowAllocStageScopeBegin();
+
     s32 i;
     struct player_data *player_data;
 

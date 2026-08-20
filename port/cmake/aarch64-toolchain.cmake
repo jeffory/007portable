@@ -26,3 +26,11 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# On a Debian-multiarch host (the ge007-cross container with
+# libsdl2-dev:arm64 + mesa :arm64) resolve the target SDL2/GL through
+# pkg-config's arm64 libdir — SDL2 backend ON, real rendering under
+# qemu-user against a host X server. Without those packages this finds
+# nothing and the build falls back to the headless null backend.
+set(CMAKE_FIND_ROOT_PATH /usr/aarch64-linux-gnu /usr/lib/aarch64-linux-gnu /usr)
+set(ENV{PKG_CONFIG_LIBDIR} "/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig")
