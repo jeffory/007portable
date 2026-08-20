@@ -249,7 +249,13 @@ static const char *bindConfigPath(char *buf, size_t len)
         snprintf(buf, len, "%s/ge007/input.ini", xdg);
     } else {
         const char *home = getenv("HOME");
-        snprintf(buf, len, "%s/.config/ge007/input.ini", home != NULL ? home : ".");
+        if (home == NULL || home[0] == '\0') {
+            /* no HOME (headless/container runs): keep the config beside the
+             * game data instead of littering ./.config into the cwd */
+            snprintf(buf, len, "data/input.ini");
+            return buf;
+        }
+        snprintf(buf, len, "%s/.config/ge007/input.ini", home);
     }
     return buf;
 }

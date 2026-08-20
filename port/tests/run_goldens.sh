@@ -47,6 +47,12 @@ fi
 export LIBGL_ALWAYS_SOFTWARE=1 SDL_AUDIODRIVER=dummy SDL_VIDEODRIVER=x11
 export PORT_NO_GAMEPAD=1 PORT_DETERMINISTIC=1
 
+# Hermetic save state: game settings live in the EEPROM and leak into CRCs,
+# STATEHASHes and frames. Run against a throwaway copy of the pinned
+# fixture, never the player's real data/eeprom.bin.
+cp port/tests/fixtures/eeprom.bin "$T/eeprom.bin"
+export PORT_EEPROM="$T/eeprom.bin"
+
 run() { # run <timeout> <args...>  (golden env set by the caller)
     local secs=$1; shift
     timeout "$secs" "$BIN" "$@" >"$T/stdout.log" 2>"$T/stderr.log"

@@ -1,19 +1,28 @@
 /**
  * @file eeprom.c
  * File-backed EEPROM (data/eeprom.bin). GoldenEye uses a 4 Kbit EEPROM
- * (64 blocks x 8 bytes = 512 bytes).
+ * (64 blocks x 8 bytes = 512 bytes). PORT_EEPROM overrides the path —
+ * the golden suite points it at a throwaway copy of a pinned fixture so
+ * the player's real save can neither perturb a test run nor be clobbered
+ * by one.
  */
 #include <ultra64.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include "port.h"
 
 #define EEPROM_SIZE   512
 #define EEPROM_BLOCK  8
-#define EEPROM_PATH   "data/eeprom.bin"
 
 static u8 sEeprom[EEPROM_SIZE];
 static int sLoaded;
+
+static const char *eepromPath(void)
+{
+    const char *p = getenv("PORT_EEPROM");
+    return p != NULL ? p : "data/eeprom.bin";
+}
 
 static void eepromEnsureLoaded(void)
 {
@@ -24,7 +33,7 @@ static void eepromEnsureLoaded(void)
     }
     sLoaded = 1;
     memset(sEeprom, 0xFF, sizeof(sEeprom)); /* fresh EEPROM reads as 0xFF */
-    f = fopen(EEPROM_PATH, "rb");
+    f = fopen(eepromPath(), "rb");
     if (f != NULL) {
         fread(sEeprom, 1, sizeof(sEeprom), f);
         fclose(f);
@@ -33,7 +42,7 @@ static void eepromEnsureLoaded(void)
 
 static void eepromFlush(void)
 {
-    FILE *f = fopen(EEPROM_PATH, "wb");
+    FILE *f = fopen(eepromPath(), "wb");
 
     if (f != NULL) {
         fwrite(sEeprom, 1, sizeof(sEeprom), f);

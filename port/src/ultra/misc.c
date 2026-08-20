@@ -65,9 +65,52 @@ void *osPhysicalToVirtual(u32 paddr)
     return (void *)paddr;
 }
 
-/* --- interrupts / events ----------------------------------------------------- */
+/* --- interrupts / events -----------------------------------------------------
+ * osSetIntMask carries libaudio's critical sections: the game thread posts
+ * events and walks queues under osSetIntMask(OS_IM_NONE), and the synth
+ * thread's alAudioFrame internals take the same mask (event.c, csplayer.c,
+ * synaddplayer.c, snd.c).  On N64 this masked interrupts; here it is a
+ * process-wide mutex, taken on the unmasked->masked transition and released
+ * on masked->unmasked.  The current mask is thread-local so nested masked
+ * regions within one thread re-enter without touching the lock — matching
+ * N64 semantics, where re-masking was idempotent and restoring a saved
+ * OS_IM_NONE kept interrupts off until the outermost restore.
+ *
+ * The lock stays disarmed (NULL) until portIntMaskInit(), called only when
+ * the audio synth thread actually starts; single-threaded builds and
+ * PORT_DETERMINISTIC runs never pay for it. */
+#ifdef GE_HAVE_SDL2
+#include <SDL.h>
+
+static SDL_mutex *sIntMaskLock;
+static __thread OSIntMask sIntMaskCur = OS_IM_ALL;
+
+void portIntMaskInit(void)
+{
+    if (sIntMaskLock == NULL) {
+        sIntMaskLock = SDL_CreateMutex();
+    }
+}
+
+OSIntMask osSetIntMask(OSIntMask mask)
+{
+    OSIntMask prev = sIntMaskCur;
+
+    if (sIntMaskLock != NULL) {
+        if (mask == OS_IM_NONE && prev != OS_IM_NONE) {
+            SDL_LockMutex(sIntMaskLock);
+        } else if (mask != OS_IM_NONE && prev == OS_IM_NONE) {
+            SDL_UnlockMutex(sIntMaskLock);
+        }
+    }
+    sIntMaskCur = mask;
+    return prev;
+}
+#else
+void portIntMaskInit(void) {}
+OSIntMask osSetIntMask(OSIntMask mask) { return OS_IM_ALL; }
+#endif
 OSIntMask osGetIntMask(void) { return 0; }
-OSIntMask osSetIntMask(OSIntMask mask) { return 0; }
 u32 __osDisableInt(void) { return 0; }
 void __osRestoreInt(u32 flags) {}
 void osSetEventMesg(OSEvent event, OSMesgQueue *mq, OSMesg msg) {}

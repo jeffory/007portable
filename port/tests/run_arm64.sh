@@ -53,7 +53,7 @@ $RUN bash -c "$QEMU build-arm64/ge007-port --selftest 2>&1 | tail -1" | grep -q 
     || { echo "!! selftest failed"; FAIL=1; }
 
 echo "== arm64 deterministic boot (qemu, ~1min)"
-$RUN bash -c "PORT_DETERMINISTIC=1 PORT_CRC_TRACE=/work/build-arm64/crc_boot.txt \
+$RUN bash -c "cp /work/port/tests/fixtures/eeprom.bin /work/build-arm64/eeprom_test.bin && PORT_DETERMINISTIC=1 PORT_EEPROM=/work/build-arm64/eeprom_test.bin PORT_CRC_TRACE=/work/build-arm64/crc_boot.txt \
     PORT_STATE_HASH=600 PORT_STATE_HASH_EXIT=1 $QEMU build-arm64/ge007-port" >/dev/null 2>&1 || true
 if [ "${1:-}" = capture ]; then cp build-arm64/crc_boot.txt port/tests/goldens/arm64_boot_crc.txt; else
 diff port/tests/goldens/arm64_boot_crc.txt build-arm64/crc_boot.txt \
@@ -61,7 +61,7 @@ diff port/tests/goldens/arm64_boot_crc.txt build-arm64/crc_boot.txt \
 fi
 
 echo "== arm64 dam load (qemu, ~2min)"
-$RUN bash -c "PORT_DETERMINISTIC=1 PORT_AUTOSTART=1 PORT_CRC_TRACE=/work/build-arm64/crc_dam.txt \
+$RUN bash -c "cp /work/port/tests/fixtures/eeprom.bin /work/build-arm64/eeprom_test.bin && PORT_DETERMINISTIC=1 PORT_EEPROM=/work/build-arm64/eeprom_test.bin PORT_AUTOSTART=1 PORT_CRC_TRACE=/work/build-arm64/crc_dam.txt \
     PORT_STATE_HASH=900 PORT_STATE_HASH_EXIT=1 $QEMU build-arm64/ge007-port --stage dam" >/dev/null 2>&1 || true
 if [ "${1:-}" = capture ]; then cp build-arm64/crc_dam.txt port/tests/goldens/arm64_dam_crc.txt; echo "arm64 goldens pinned"; exit 0; else
 diff port/tests/goldens/arm64_dam_crc.txt build-arm64/crc_dam.txt \

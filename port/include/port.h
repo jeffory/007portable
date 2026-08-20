@@ -116,6 +116,7 @@ void portSwapRareSeqTable(void *data);
 void portSwapCMidiHdr(void *data);
 void portAudioFrame(void);
 void portAudioPump(void);
+void portIntMaskInit(void); /* arm osSetIntMask as a real lock (misc.c) */
 
 /* --- input backend --------------------------------------------------------- */
 void portInputInit(void);
