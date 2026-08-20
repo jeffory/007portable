@@ -50,6 +50,17 @@ static const char *portPathBase(void)
         sBase = "data";
         return sBase;
     }
+#if defined(GE_HAVE_SDL2) && defined(__ANDROID__)
+    {
+        /* app-scoped external storage (/sdcard/Android/data/<pkg>/files):
+         * reachable with adb push / a file manager, unlike the pref path */
+        const char *ext = SDL_AndroidGetExternalStoragePath();
+        if (ext != NULL) {
+            sBase = strdup(ext);
+            return sBase;
+        }
+    }
+#endif
 #ifdef GE_HAVE_SDL2
     {
         /* SDL creates the directory; returned path has a trailing

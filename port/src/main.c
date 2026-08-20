@@ -14,8 +14,8 @@
 #if IS_64_BIT
 #ifdef _WIN32
 #include <windows.h>
-#else
-#include <ucontext.h>
+#elif !defined(__ANDROID__)
+#include <ucontext.h> /* bionic has none; Android uses the asm pivot */
 #endif
 #endif
 
@@ -163,6 +163,12 @@ static void applyStageOverride(void)
     fprintf(stderr, "port/note: stage override: \"%s\"\n", tok);
 }
 
+#ifdef __ANDROID__
+/* SDLActivity loads libmain.so and calls the exported SDL_main */
+#define main SDL_main
+int SDL_main(int argc, char **argv);
+#endif
+
 int main(int argc, char **argv)
 {
     setvbuf(stdout, NULL, _IOLBF, 0); /* keep printf diagnostics when killed */
@@ -244,6 +250,20 @@ int main(int argc, char **argv)
         }
         top = (void *)(((uintptr_t)(stack + stackSize - 64)) & ~(uintptr_t)15);
         __asm__ volatile("mov %0, %%rsp\n\tcall *%1"
+                         : : "r"(top), "r"(bossEntry) : "memory");
+        __builtin_unreachable();
+#elif defined(__ANDROID__) && defined(__aarch64__)
+        /* bionic has no ucontext either; same one-way pivot, aarch64 */
+        u32 stackSize = 16 * 1024 * 1024;
+        u8 *stack = portLowAlloc(stackSize);
+        void *top;
+
+        if (stack == NULL) {
+            fprintf(stderr, "port: failed to set up low-memory game stack\n");
+            return 1;
+        }
+        top = (void *)(((uintptr_t)(stack + stackSize - 64)) & ~(uintptr_t)15);
+        __asm__ volatile("mov sp, %0\n\tblr %1"
                          : : "r"(top), "r"(bossEntry) : "memory");
         __builtin_unreachable();
 #else

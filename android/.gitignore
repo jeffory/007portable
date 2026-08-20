@@ -1,0 +1,8 @@
+sdl/
+sdl.tar.gz
+app/src/main/java/org/libsdl/
+.gradle/
+build/
+app/build/
+app/.cxx/
+local.properties

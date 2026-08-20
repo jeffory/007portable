@@ -55,6 +55,9 @@ add_compile_options(-Wtype-limits)
 # Platform backend: SDL2 when devel headers are present, headless null
 # backend otherwise (enough for --selftest and CI).
 # ---------------------------------------------------------------------------
+# A parent project (android/app/jni) may inject its own SDL2 target and
+# GE_ANDROID before including us; only auto-detect when it hasn't.
+if(NOT DEFINED GE_SDL2_TARGET OR GE_SDL2_TARGET STREQUAL "")
 find_package(PkgConfig QUIET)
 set(GE_HAVE_SDL2 OFF)
 set(GE_SDL2_TARGET "")
@@ -83,13 +86,14 @@ if(NOT GE_HAVE_SDL2)
     target_include_directories(ge_sdl2_fallback INTERFACE ${GE_SDL2_INC})
     # arch-specific SDL_config-<arch>.h may be missing when only another
     # arch's -devel package is installed; port/compat64 provides a shim.
-    target_include_directories(ge_sdl2_fallback INTERFACE ${CMAKE_SOURCE_DIR}/port/compat64)
+    target_include_directories(ge_sdl2_fallback INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/port/compat64)
     target_link_libraries(ge_sdl2_fallback INTERFACE ${GE_SDL2_LIB})
     set(GE_HAVE_SDL2 ON)
     set(GE_SDL2_TARGET ge_sdl2_fallback)
     message(STATUS "SDL2 via fallback: ${GE_SDL2_INC} + ${GE_SDL2_LIB}")
   endif()
 endif()
+endif() # GE_SDL2_TARGET injected by parent
 message(STATUS "SDL2 backend: ${GE_HAVE_SDL2}")
 
 # ---------------------------------------------------------------------------
@@ -97,17 +101,17 @@ message(STATUS "SDL2 backend: ${GE_HAVE_SDL2}")
 # ---------------------------------------------------------------------------
 
 # All game logic. Port-authored files never go in src/game, so a glob is safe.
-file(GLOB GAME_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/game/*.c)
+file(GLOB GAME_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/game/*.c)
 # chraidata.c goes through the same ConvertAIPRINT sed pass as the N64
 # Makefile (PRINT("s") -> AI_PRINT,'s',... inline bytes); the CPPLib/SWITCH/
 # AND/CALL macros have GCC-compatible PC branches, so the generated file
 # compiles natively and its 18 AI byte arrays are byte-exact vs the ROM.
-list(REMOVE_ITEM GAME_SOURCES ${CMAKE_SOURCE_DIR}/src/game/chraidata.c)
+list(REMOVE_ITEM GAME_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/game/chraidata.c)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/gen/chraidata_ai.c
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/gen
-  COMMAND sed -E -f ${CMAKE_SOURCE_DIR}/port/tools/ai_print.sed
-          ${CMAKE_SOURCE_DIR}/src/game/chraidata.c > ${CMAKE_BINARY_DIR}/gen/chraidata_ai.c
-  DEPENDS ${CMAKE_SOURCE_DIR}/src/game/chraidata.c ${CMAKE_SOURCE_DIR}/port/tools/ai_print.sed
+  COMMAND sed -E -f ${CMAKE_CURRENT_SOURCE_DIR}/port/tools/ai_print.sed
+          ${CMAKE_CURRENT_SOURCE_DIR}/src/game/chraidata.c > ${CMAKE_BINARY_DIR}/gen/chraidata_ai.c
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/game/chraidata.c ${CMAKE_CURRENT_SOURCE_DIR}/port/tools/ai_print.sed
   COMMENT "ConvertAIPRINT: chraidata.c -> gen/chraidata_ai.c"
   VERBATIM)
 list(APPEND GAME_SOURCES ${CMAKE_BINARY_DIR}/gen/chraidata_ai.c)
@@ -140,24 +144,24 @@ set(KEPT_SRC
 # Portable libultra pieces: matrix/projection math and the VI mode tables
 # (pure data). Everything else in libultra/libultrare is N64 plumbing that
 # port/src/ultra/ replaces.
-file(GLOB GU_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/libultra/gu/*.c)
+file(GLOB GU_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/libultra/gu/*.c)
 # IDO's polynomial sinf/cosf use big-endian float bit-tricks that return
 # garbage on x86 (inf cot -> invisible 3D). libm provides them instead.
 list(REMOVE_ITEM GU_SOURCES
-  ${CMAKE_SOURCE_DIR}/src/libultra/gu/sinf.c
-  ${CMAKE_SOURCE_DIR}/src/libultra/gu/cosf.c)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/libultra/gu/sinf.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/libultra/gu/cosf.c)
 set(LIBULTRA_DATA_SRC
   src/libultrare/io/vitbl.c
 )
 
 # Rare's decompressor used by the asset loader.
-file(GLOB INFLATE_SOURCES CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/src/inflate/*.c)
+file(GLOB INFLATE_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/inflate/*.c)
 
 # libultra audio synthesis + Rare's driver overrides (M4). The Acmd macros
 # these emit are redirected to the software mixer via include/PR/abi.h.
 file(GLOB AL_SOURCES CONFIGURE_DEPENDS
-  ${CMAKE_SOURCE_DIR}/src/libultra/audio/*.c
-  ${CMAKE_SOURCE_DIR}/src/libultrare/audio/*.c)
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/libultra/audio/*.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/libultrare/audio/*.c)
 
 set(PORT_SRC
   port/src/crctrace.c
@@ -201,12 +205,12 @@ if(GE_HAVE_SDL2)
     port/fast3d/glad/glad.c
   )
   target_include_directories(fast3d BEFORE PRIVATE
-    ${CMAKE_SOURCE_DIR}/port/include
-    ${CMAKE_SOURCE_DIR}/include
-    ${CMAKE_SOURCE_DIR}/port/fast3d
+    ${CMAKE_CURRENT_SOURCE_DIR}/port/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/port/fast3d
   )
   if(NOT EXISTS /usr/include/gnu/stubs-32.h)
-    target_include_directories(fast3d PRIVATE ${CMAKE_SOURCE_DIR}/port/compat32)
+    target_include_directories(fast3d PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/port/compat32)
   endif()
   target_compile_options(fast3d PRIVATE -fno-strict-aliasing -fsigned-char -fwrapv)
   if(WIN32)
@@ -229,7 +233,7 @@ else()
   )
 endif()
 
-add_executable(ge007-port
+set(GE_ALL_SRC
   ${PORT_SRC}
   ${KEPT_SRC}
   ${GAME_SOURCES}
@@ -237,6 +241,13 @@ add_executable(ge007-port
   ${LIBULTRA_DATA_SRC}
   ${INFLATE_SOURCES} ${AL_SOURCES}
 )
+if(GE_ANDROID)
+  # SDLActivity loads libmain.so and calls its exported SDL_main
+  add_library(ge007-port SHARED ${GE_ALL_SRC})
+  set_target_properties(ge007-port PROPERTIES OUTPUT_NAME main)
+else()
+  add_executable(ge007-port ${GE_ALL_SRC})
+endif()
 
 # ---------------------------------------------------------------------------
 # Defines and include paths
@@ -259,20 +270,20 @@ endif()
 
 # port/include must come FIRST so PC shims win over repo headers.
 target_include_directories(ge007-port BEFORE PRIVATE
-  ${CMAKE_SOURCE_DIR}/port/include
-  ${CMAKE_SOURCE_DIR}/include
-  ${CMAKE_SOURCE_DIR}/src
-  ${CMAKE_SOURCE_DIR}/src/game
-  ${CMAKE_SOURCE_DIR}          # for <assets/images.def> style includes
-  ${CMAKE_SOURCE_DIR}/include/PR  # libultra-internal headers use <os_internal.h>
-  ${CMAKE_SOURCE_DIR}/src/libultra  # vitbl.c uses <io/viint.h>
+  ${CMAKE_CURRENT_SOURCE_DIR}/port/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  ${CMAKE_CURRENT_SOURCE_DIR}/src
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/game
+  ${CMAKE_CURRENT_SOURCE_DIR}          # for <assets/images.def> style includes
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/PR  # libultra-internal headers use <os_internal.h>
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/libultra  # vitbl.c uses <io/viint.h>
 )
 
 # Allow compiling on hosts without glibc-devel.i686 (linking still needs it).
 if(NOT EXISTS /usr/include/gnu/stubs-32.h)
   message(WARNING "glibc-devel.i686 not installed - compiling with a stubs-32.h "
                   "shim; the final link requires: sudo dnf install glibc-devel.i686 libgcc.i686")
-  target_include_directories(ge007-port PRIVATE ${CMAKE_SOURCE_DIR}/port/compat32)
+  target_include_directories(ge007-port PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/port/compat32)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -296,6 +307,14 @@ target_compile_options(ge007-port PRIVATE
     -Wno-pointer-to-int-cast
     -Wno-int-to-pointer-cast
   >
+  # clang (NDK) promotes these to errors by default; the IDO-era code
+  # trips both (missing returns on unused paths, langGet strings through
+  # printf-style helpers)
+  $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:Clang>>:
+    -Wno-error=return-type
+    -Wno-format-security
+    -Wno-deprecated-non-prototype
+  >
   $<$<COMPILE_LANGUAGE:CXX>:
     -fno-strict-aliasing
     -fsigned-char
@@ -310,13 +329,16 @@ target_compile_options(ge007-port PRIVATE
 # every game TU so the ~570 reference sites resolve with no linker script
 # and no absolute symbols (PIE/lld/NDK-safe). Replaces rom_symbols.ld.
 target_compile_options(ge007-port PRIVATE
-  -include ${CMAKE_SOURCE_DIR}/port/include/rom_offsets.h)
+  -include ${CMAKE_CURRENT_SOURCE_DIR}/port/include/rom_offsets.h)
 # GE_PIE=ON builds a position-independent executable (Android-shaped): the
 # game heap/stack/ROM already live below 4GB via portLowAlloc, so this
 # tests whether any shared code still truncates a pointer TO A STATIC
 # through u32 (the one thing -no-pie's fixed 0x400000 image guaranteed).
 option(GE_PIE "build PIE instead of -no-pie" OFF)
-if(NOT GE_PIE)
+if(GE_ANDROID)
+  # shared library: position-independent by construction; -pie/-no-pie are
+  # executable link options and must not be added
+elseif(NOT GE_PIE)
   target_link_options(ge007-port PRIVATE -no-pie)
 else()
   target_compile_options(ge007-port PRIVATE -fPIE)

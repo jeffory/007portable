@@ -46,8 +46,9 @@ s32 sub_GAME_7F0D37DC(u32 cycles, u8 specA, u8 port, u8 value);
 
 // data
 s8 D_8004EC30 = 0x0;
-extern u8 spec_keyboard_row_caps_z_x_c_v;
-#pragma weak spec_keyboard_row_caps_z_x_c_v = spec_keyboard_buffer
+/* PORT: was IDO `#pragma weak` aliasing byte 0 of spec_keyboard_buffer
+ * (clang rejects the pragma form) */
+#define spec_keyboard_row_caps_z_x_c_v (spec_keyboard_buffer[0])
 u8 spec_keyboard_buffer[] = 
 {
     0xFF, 0xFF, 0xFF, 0xFF,
