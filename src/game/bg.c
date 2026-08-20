@@ -3122,14 +3122,22 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
 
     gdl = (Gfx *) g_BgRoomInfo[roomnum].ptr_expanded_mapping_info;
     gdl = &gdl[point->gdlindex];
-    vtxoff = ((u8 *) gdl)[1] & 0xf;
+#ifdef TARGET_N64
+    vtxoff = ((u8 *) gdl)[1] & 0xf; /* vertex buffer offset (v0) */
+#else
+    vtxoff = (gdl->words.w0 >> 16) & 0xf;
+#endif
     temp.vertices = (Vertex *)g_BgRoomInfo[roomnum].vertices;
     vtxbase = (Vertex *)((s32)temp.vertices + (((u32 *)gdl)[1] & 0x00ffffff));
     temp.roominfo = &g_BgRoomInfo[roomnum];
     bestScore = 0x7FFFFFFF;
     found = 0;
     gdl++;
-    op = *((s8 *) gdl);
+#ifdef TARGET_N64
+    op = *((s8 *) gdl); /* opcode = first byte on big-endian */
+#else
+    op = (s8) (gdl->words.w0 >> 24);
+#endif
 
     if ((op != G_VTX) && (op != ((s8) G_ENDDL)))
     {
@@ -3142,9 +3150,15 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                 bboxMin = D_80044868;
                 bboxMax = D_80044874;
                 score = dist;
+#ifdef TARGET_N64
                 idx[0] = (((u8 *) gdl)[5] / 10) - vtxoff;
                 idx[1] = (((u8 *) gdl)[6] / 10) - vtxoff;
                 idx[2] = (((u8 *) gdl)[7] / 10) - vtxoff;
+#else
+                idx[0] = ((s32) ((gdl->words.w1 >> 16) & 0xff) / 10) - vtxoff;
+                idx[1] = ((s32) ((gdl->words.w1 >> 8) & 0xff) / 10) - vtxoff;
+                idx[2] = ((s32) (gdl->words.w1 & 0xff) / 10) - vtxoff;
+#endif
                 i = 0;
                 
                 do
@@ -3202,6 +3216,7 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                         score = dist;
                         found = 1;
 
+#ifdef TARGET_N64
                         if (((*((u8 *) gdl)) != G_SETTIMG) && (dist || vtxbase || 1) && (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < gdl))
                         {
                             do
@@ -3224,6 +3239,42 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                             temp.word = ((u32 *) tcmd)[1] - 8;
                             texnum = *((u16 *) (temp.word | 0x80000000));
                         }
+#else
+                        if (((u8) (gdl->words.w0 >> 24) != (u8) G_SETTIMG) && (dist || vtxbase || 1) && (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < gdl))
+                        {
+                            do
+                            {
+                                tcmd--;
+                                if ((u8) (tcmd->words.w0 >> 24) == (u8) G_SETTIMG)
+                                {
+                                    break;
+                                }
+                            }
+                            while (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < tcmd);
+                        }
+
+                        if (tcmd == ((Gfx *) local.roominfo->ptr_expanded_mapping_info))
+                        {
+                            texnum = -1;
+                        }
+                        else
+                        {
+                            /* texLoadFromGdl() rewrote w1 into a host pointer
+                             * to the texture data, which image.c places 8
+                             * bytes after an s16 texture number; an
+                             * unrewritten 0xabcdXXXX marker still holds the
+                             * raw texture id */
+                            temp.word = ((u32 *) tcmd)[1];
+                            if (((u32) temp.word >> 16) == 0xabcd)
+                            {
+                                texnum = temp.word & 0xfff;
+                            }
+                            else
+                            {
+                                texnum = *((u16 *) (uintptr_t) ((u32) temp.word - 8));
+                            }
+                        }
+#endif
 
                         if (check_if_imageID_is_light(texnum))
                         {
@@ -3262,6 +3313,7 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                         bboxMin2 = D_80044880;
                         bboxMax2 = D_8004488C;
 
+#ifdef TARGET_N64
                         if (s2 == 0)
                         {
                             idx2[0] = (((u32 *) gdl)[1] & 0xf) - vtxoff;
@@ -3286,6 +3338,14 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                             idx2[1] = (((u32 *) gdl)[1] >> 28) - vtxoff;
                             idx2[2] = (((u32) ((u16 *) gdl)[1]) >> 12) - vtxoff;
                         }
+#else
+                        /* triangle s2 of a G_TRI4: x nibble at w1 >> (8*s2),
+                         * y at w1 >> (8*s2 + 4), z at w0 >> (4*s2) — see
+                         * gSP4Triangles in gbi_extension.h */
+                        idx2[0] = ((gdl->words.w1 >> (s2 * 8)) & 0xf) - vtxoff;
+                        idx2[1] = ((gdl->words.w1 >> (s2 * 8 + 4)) & 0xf) - vtxoff;
+                        idx2[2] = ((gdl->words.w0 >> (s2 * 4)) & 0xf) - vtxoff;
+#endif
 
                         i = 0;
 
@@ -3340,6 +3400,7 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                                 score = dist;
                                 found = 1;
 
+#ifdef TARGET_N64
                                 if (((*((u8 *) gdl)) != G_SETTIMG) && (dist || vtxbase || 1) && (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < gdl))
                                 {
                                     do
@@ -3352,7 +3413,7 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                                     }
                                     while (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < tcmd);
                                 }
-                                
+
                                 if (tcmd == ((Gfx *) local.roominfo->ptr_expanded_mapping_info))
                                 {
                                     texnum = -1;
@@ -3362,6 +3423,38 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
                                     temp.word = ((u32 *) tcmd)[1] - 8;
                                     texnum = *((u16 *) (temp.word | 0x80000000));
                                 }
+#else
+                                if (((u8) (gdl->words.w0 >> 24) != (u8) G_SETTIMG) && (dist || vtxbase || 1) && (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < gdl))
+                                {
+                                    do
+                                    {
+                                        tcmd--;
+                                        if ((u8) (tcmd->words.w0 >> 24) == (u8) G_SETTIMG)
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    while (((Gfx *) local.roominfo->ptr_expanded_mapping_info) < tcmd);
+                                }
+
+                                if (tcmd == ((Gfx *) local.roominfo->ptr_expanded_mapping_info))
+                                {
+                                    texnum = -1;
+                                }
+                                else
+                                {
+                                    /* see the G_TRI1 branch above */
+                                    temp.word = ((u32 *) tcmd)[1];
+                                    if (((u32) temp.word >> 16) == 0xabcd)
+                                    {
+                                        texnum = temp.word & 0xfff;
+                                    }
+                                    else
+                                    {
+                                        texnum = *((u16 *) (uintptr_t) ((u32) temp.word - 8));
+                                    }
+                                }
+#endif
 
                                 if (check_if_imageID_is_light(texnum))
                                 {
@@ -3395,7 +3488,11 @@ bool bgTestRayIntersectionInRoom(coord3d *from, coord3d *to, coord3d *dir, RoomV
             }
 
             gdl++;
+#ifdef TARGET_N64
             op = *((s8 *) gdl);
+#else
+            op = (s8) (gdl->words.w0 >> 24);
+#endif
         }
         while ((op != G_VTX) && (op != ((s8) G_ENDDL)));
     }

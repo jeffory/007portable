@@ -8468,7 +8468,11 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
 
     while (1)
     {
-        op = *((s8 *) gdl);
+#ifdef TARGET_N64
+        op = *((s8 *) gdl); /* opcode = first byte on big-endian */
+#else
+        op = (s8) (gdl->words.w0 >> 24);
+#endif
         if (op == (s8)G_ENDDL)
         {
             if (gdl2 == 0)
@@ -8488,7 +8492,11 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
 
         if (op == G_VTX)
         {
-            op = ((u8 *) gdl)[1] & 0xf;
+#ifdef TARGET_N64
+            op = ((u8 *) gdl)[1] & 0xf; /* vertex buffer offset (v0) */
+#else
+            op = (gdl->words.w0 >> 16) & 0xf;
+#endif
             padC = ((u32 *) gdl)[1] & 0x00ffffff;
             vtxbase = (Vertex *) ((((s32) vertices) + padC) - (op << 4));
             gdl++;
@@ -8501,9 +8509,15 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
             bboxMin = D_8003204C;
             bboxMax = D_80032058;
 
+#ifdef TARGET_N64
             idx[0] = ((u8 *) gdl)[5] / 10;
             idx[1] = ((u8 *) gdl)[6] / 10;
             idx[2] = ((u8 *) gdl)[7] / 10;
+#else
+            idx[0] = (s32) ((gdl->words.w1 >> 16) & 0xff) / 10;
+            idx[1] = (s32) ((gdl->words.w1 >> 8) & 0xff) / 10;
+            idx[2] = (s32) (gdl->words.w1 & 0xff) / 10;
+#endif
 
             for (i = 0; i < 3; i++)
             {
@@ -8547,6 +8561,7 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                     dy = (f32) (((s32) hitbuf.hitpos.y) - ((s32) arg0->y));
                     dz = (f32) (((s32) hitbuf.hitpos.z) - ((s32) arg0->z));
                     tcmd = gdl;
+#ifdef TARGET_N64
                     if (((*((u8 *) gdl)) != 253) && (cmdStart < gdl))
                     {
                         do
@@ -8570,6 +8585,42 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                         padC = ((u32 *) tcmd)[1] - 8;
                         texnum = *((u16 *) (padC | 0x80000000));
                     }
+#else
+                    if (((u8) (gdl->words.w0 >> 24) != (u8) G_SETTIMG) && (cmdStart < gdl))
+                    {
+                        do
+                        {
+                            tcmd--;
+
+                            if ((u8) (tcmd->words.w0 >> 24) == (u8) G_SETTIMG)
+                            {
+                                break;
+                            }
+                        } while (cmdStart < tcmd);
+
+                    }
+
+                    if (tcmd == cmdStart)
+                    {
+                        texnum = -1;
+                    }
+                    else
+                    {
+                        /* texLoadFromGdl() rewrote w1 into a host pointer to
+                         * the texture data, which image.c places 8 bytes
+                         * after an s16 texture number; an unrewritten
+                         * 0xabcdXXXX marker still holds the raw texture id */
+                        padC = ((u32 *) tcmd)[1];
+                        if (((u32) padC >> 16) == 0xabcd)
+                        {
+                            texnum = padC & 0xfff;
+                        }
+                        else
+                        {
+                            texnum = *((u16 *) (uintptr_t) ((u32) padC - 8));
+                        }
+                    }
+#endif
 
                     d = ((dx * dx) + (dy * dy)) + (dz * dz);
 
@@ -8601,6 +8652,7 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                 bboxMin2 = D_80032070;
                 bboxMax2 = D_8003207C;
 
+#ifdef TARGET_N64
                 if (s2 == 0)
                 {
                     idx2[0] = ((u32 *) gdl)[1] & 0xf;
@@ -8625,6 +8677,14 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                     idx2[1] = ((u32 *) gdl)[1] >> 28;
                     idx2[2] = ((u32) ((u16 *) gdl)[1]) >> 12;
                 }
+#else
+                /* triangle s2 of a G_TRI4: x nibble at w1 >> (8*s2),
+                 * y at w1 >> (8*s2 + 4), z at w0 >> (4*s2) — see
+                 * gSP4Triangles in gbi_extension.h */
+                idx2[0] = (gdl->words.w1 >> (s2 * 8)) & 0xf;
+                idx2[1] = (gdl->words.w1 >> (s2 * 8 + 4)) & 0xf;
+                idx2[2] = (gdl->words.w0 >> (s2 * 4)) & 0xf;
+#endif
 
                 for (i = 0; i < 3; i++)
                 {
@@ -8669,6 +8729,7 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                         dz = (f32) (((s32) hitbuf.hitpos.z) - ((s32) arg0->z));
                         tcmd = gdl;
 
+#ifdef TARGET_N64
                         if (((*((u8 *) gdl)) != G_SETTIMG) && (cmdStart < gdl))
                         {
                             do
@@ -8691,6 +8752,38 @@ bool bgTestHitOnObj(coord3d *arg0, coord3d *arg1, coord3d *arg2, Gfx *gdl, Gfx *
                             padC = ((u32 *) tcmd)[1] - 8;
                             texnum = *((u16 *) (padC | 0x80000000));
                         }
+#else
+                        if (((u8) (gdl->words.w0 >> 24) != (u8) G_SETTIMG) && (cmdStart < gdl))
+                        {
+                            do
+                            {
+                                tcmd--;
+                                if ((u8) (tcmd->words.w0 >> 24) == (u8) G_SETTIMG)
+                                {
+                                    break;
+                                }
+                            } while (cmdStart < tcmd);
+
+                        }
+
+                        if (tcmd == cmdStart)
+                        {
+                            texnum = -1;
+                        }
+                        else
+                        {
+                            /* see the G_TRI1 branch above */
+                            padC = ((u32 *) tcmd)[1];
+                            if (((u32) padC >> 16) == 0xabcd)
+                            {
+                                texnum = padC & 0xfff;
+                            }
+                            else
+                            {
+                                texnum = *((u16 *) (uintptr_t) ((u32) padC - 8));
+                            }
+                        }
+#endif
 
                         d = ((dx * dx) + (dy * dy)) + (dz * dz);
 
