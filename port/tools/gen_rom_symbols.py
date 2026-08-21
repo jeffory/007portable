@@ -229,8 +229,12 @@ def main():
         with tempfile.NamedTemporaryFile(suffix=".o", delete=False) as tf:
             objpath = tf.name
         try:
+            # -fno-pie matters: distros that default gcc to PIE split
+            # pointer-carrying arrays into .data.rel.local, a second section
+            # whose offsets restart at 0 — the nm-derived segment offsets
+            # then interleave wrongly (bit Ubuntu CI; Fedora kept one .data).
             cmd = ["gcc", "-m32", "-c", "-fno-toplevel-reorder",
-                   "-malign-data=abi", "-std=gnu89", "-fms-extensions",
+                   "-malign-data=abi", "-fno-pie", "-std=gnu89", "-fms-extensions",
                    "-fno-strict-aliasing",
                    "-Wno-implicit-function-declaration", "-Wno-int-conversion",
                    "-Wno-incompatible-pointer-types",
@@ -318,7 +322,7 @@ def main():
                 kinds[m2.group(2)] = KINDMAP[m2.group(1)]
         with tempfile.NamedTemporaryFile(suffix=".o", delete=False) as tf:
             objpath = tf.name
-        cmd = ["gcc", "-m32", "-c", "-fno-toplevel-reorder", "-malign-data=abi",
+        cmd = ["gcc", "-m32", "-c", "-fno-toplevel-reorder", "-malign-data=abi", "-fno-pie",
                "-std=gnu89", "-fms-extensions", "-fno-strict-aliasing",
                "-Wno-implicit-function-declaration", "-Wno-int-conversion",
                "-Wno-incompatible-pointer-types",

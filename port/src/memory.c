@@ -142,6 +142,33 @@ void *portLowAlloc(u32 size)
     }
     fprintf(stderr, "port: no low-4GB address space for %u bytes\n", size);
     return NULL;
+#elif IS_64_BIT && defined(__APPLE__)
+    /* Darwin has no MAP_FIXED_NOREPLACE; the kernel honors a plain hint
+     * when the range is free, so scan hints and verify what came back is
+     * below 4GB (unmap and advance otherwise). Requires the link to have
+     * shrunk __PAGEZERO (-Wl,-pagezero_size,0x1000) — the macOS default
+     * reserves the entire low 4GB. */
+    static uintptr_t sHint = 0x40000000;
+    uintptr_t hint = sHint;
+    u32 aligned = (size + 0xFFFFu) & ~0xFFFFu;
+
+    while (hint + aligned <= 0xFFFFFFF0u) {
+        void *p = mmap((void *)hint, size, PROT_READ | PROT_WRITE,
+                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+        if (p != MAP_FAILED && (uintptr_t)p + aligned <= 0xFFFFFFF0u) {
+            sHint = (uintptr_t)p + aligned;
+            stageTrack(p, size);
+            return p;
+        }
+        if (p != MAP_FAILED) {
+            munmap(p, size); /* kernel ignored the hint: landed high */
+        }
+        hint += aligned > 0x1000000u ? aligned : 0x1000000u;
+    }
+    fprintf(stderr, "port: no low-4GB address space for %u bytes "
+                    "(is -pagezero_size in the link flags?)\n", size);
+    return NULL;
 #elif IS_64_BIT
     /* start clear of the -no-pie image (0x400000) and the brk heap */
     static uintptr_t sHint = 0x40000000;

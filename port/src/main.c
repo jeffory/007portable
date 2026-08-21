@@ -14,8 +14,10 @@
 #if IS_64_BIT
 #ifdef _WIN32
 #include <windows.h>
-#elif !defined(__ANDROID__)
-#include <ucontext.h> /* bionic has none; Android uses the asm pivot */
+#elif !defined(__ANDROID__) && !defined(__APPLE__)
+/* bionic has no ucontext and macOS arm64 never got the functions;
+ * both use non-ucontext game-stack setups below */
+#include <ucontext.h>
 #endif
 #endif
 
@@ -295,6 +297,31 @@ int main(int argc, char **argv)
             return 1;
         }
         pthread_join(gameThread, NULL); /* bossEntry never returns */
+#elif defined(__APPLE__)
+        /* no ucontext on arm64 macOS; bossEntry never returns, so a
+         * one-way stack pivot works like on Windows. Low memory is
+         * mappable because the link shrinks __PAGEZERO (CMakeLists:
+         * -Wl,-pagezero_size,0x1000 — the default reserves the entire
+         * low 4GB). */
+        u32 stackSize = 16 * 1024 * 1024;
+        u8 *stack = portLowAlloc(stackSize);
+        void *top;
+
+        if (stack == NULL) {
+            fprintf(stderr, "port: failed to set up low-memory game stack\n");
+            return 1;
+        }
+        top = (void *)(((uintptr_t)(stack + stackSize - 64)) & ~(uintptr_t)15);
+#if defined(__aarch64__)
+        __asm__ volatile("mov sp, %0\n\tblr %1"
+                         : : "r"(top), "r"(bossEntry) : "memory");
+#elif defined(__x86_64__)
+        __asm__ volatile("mov %0, %%rsp\n\tcall *%1"
+                         : : "r"(top), "r"(bossEntry) : "memory");
+#else
+#error "no game-stack pivot for this Apple arch"
+#endif
+        __builtin_unreachable();
 #else
         static ucontext_t mainCtx, bossCtx;
         u32 stackSize = 16 * 1024 * 1024;

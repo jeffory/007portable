@@ -307,10 +307,10 @@ target_compile_options(ge007-port PRIVATE
     -Wno-pointer-to-int-cast
     -Wno-int-to-pointer-cast
   >
-  # clang (NDK) promotes these to errors by default; the IDO-era code
-  # trips both (missing returns on unused paths, langGet strings through
-  # printf-style helpers)
-  $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:Clang>>:
+  # clang (NDK/Apple) promotes these to errors by default; the IDO-era
+  # code trips both (missing returns on unused paths, langGet strings
+  # through printf-style helpers)
+  $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:Clang,AppleClang>>:
     -Wno-error=return-type
     -Wno-format-security
     -Wno-deprecated-non-prototype
@@ -338,6 +338,11 @@ option(GE_PIE "build PIE instead of -no-pie" OFF)
 if(GE_ANDROID)
   # shared library: position-independent by construction; -pie/-no-pie are
   # executable link options and must not be added
+elseif(APPLE)
+  # ld64 is always-PIE (arm64 has no -no_pie at all) — the PIE-clean port
+  # is fine with that. What macOS DOES need: shrink the default 4GB
+  # __PAGEZERO so portLowAlloc can map the low-4GB game memory.
+  target_link_options(ge007-port PRIVATE "LINKER:-pagezero_size,0x1000")
 elseif(NOT GE_PIE)
   target_link_options(ge007-port PRIVATE -no-pie)
 else()
