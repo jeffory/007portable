@@ -29,10 +29,11 @@ mouse): mouse deltas are injected directly into the view angles
 (1 px = `sensitivity` × 0.05°, no virtual-stick quantization or turn
 speed cap; `PORT_DIRECT_AIM=0` falls back to the stick translation, and
 aim mode always uses the stick path so the crosshair tracks the mouse).
-WASD moves, LMB fires, RMB aims, R
-reloads (GE's B action, so it also opens doors), Space also fires,
-X/F = A, C = B, Enter = Start, Q/E = shoulder buttons, arrows = analog
-stick, IJKL = raw C buttons. The scrollwheel cycles weapons (up = next,
+WASD moves, LMB fires, RMB or Left Shift aims, E uses / R reloads
+(both are GE's B action — one button covers reload, doors and switches;
+C also works), Space also fires, X/F = A, Enter = Start, Q = L shoulder,
+arrows = analog stick, IJKL = raw C buttons. In the frontend menus the
+mouse moves the hand cursor directly and left-click selects. The scrollwheel cycles weapons (up = next,
 down = previous; `]`/`[` do the same) and number keys 1–9/0 direct-select
 weapon slots 1–10 — a slot is the Nth stop of the native A-button cycle
 (held weapons in ascending weapon-id order), and an empty slot does

@@ -4,7 +4,7 @@ A native PC port of the GoldenEye 007 decompilation, built for **portability
 first**. This is not an attempt at the "ultimate" feature-rich PC port — the
 goal is one clean, device-agnostic codebase that runs the game faithfully on
 as many targets as possible: Linux (x86-64 and aarch64), RG35xxSP-class
-handhelds via PortMaster, Android, and Windows. Enhancements (widescreen,
+handhelds via PortMaster, Android, Windows, and macOS. Enhancements (widescreen,
 >60 fps interpolation, etc.) come last, and only where they don't compromise
 that goal.
 
@@ -19,19 +19,29 @@ at runtime; it is verified by SHA-1 before loading.
 
 ## Status
 
-The game is playable end to end on Linux: full intro, menus, missions with
-AI, audio, saves, mouse/keyboard and gamepad input. Current work follows the
-portability roadmap:
+The game is playable end to end: full intro, menus, missions with AI, audio,
+saves, mouse/keyboard and gamepad input. It builds and runs on Linux
+(i686, x86-64, aarch64 — the latter qemu-verified bit-identical), Windows
+(Wine-verified), and Android (GLES3, verified in the emulator through the
+title sequence); macOS (Apple Silicon) builds in CI but has not yet been run
+on real hardware. Every push builds all six targets and uploads the
+binaries as artifacts — grab them from any green run on the
+[Actions](../../actions) page.
 
 | Phase | Scope | Status |
 |---|---|---|
 | 0 | Golden regression suite (preprocess CRCs, reference frames, PCM check) | done |
 | 1 | Remove all N64-only code, default `-O2`, UBSan-clean | done |
-| 2 | Full regression net + CI matrix (deterministic replay, x86-64 / aarch64 / NDK) | in progress |
-| 3 | Native 64-bit memory model — PIE-safe, no low-4GB tricks; unlocks ARM/Android | next |
-| 4 | GLES2/3 renderer path, audio thread, portable file paths, asset cache | planned |
-| 5 | Packaging: AppImage, PortMaster zip, Android APK, Windows build | planned |
-| 6 | Profiling and enhancements | planned |
+| 2 | Full regression net + CI matrix (deterministic replay + exact goldens; 6-target CI) | done |
+| 3 | Native 64-bit memory model — PIE-safe; unlocked ARM, Android and macOS | done |
+| 4 | GLES3 renderer path, audio thread, portable file paths, sky renderer | done¹ |
+| 5 | Packaging: PortMaster zip, Android APK, Windows build, macOS build, CI artifacts | done² |
+| 6 | Profiling and enhancements (LTO, widescreen, >60 fps interpolation) | planned |
+
+¹ the converted-asset disk cache was dropped (load times don't need it);
+two cosmetic issues remain tracked (aim-sight ring size, fog shade-alpha).
+² AppImage still to do; PortMaster zip and APK await validation on real
+handheld/phone hardware, and the macOS binary on a real Mac.
 
 ## N64 support
 
@@ -43,20 +53,33 @@ The [Style Guide](./docs/StyleGuide.md) still applies to game code.
 
 ## Building
 
-Requires CMake, Ninja, GCC, and SDL2 development headers.
+Requires CMake, Ninja, a C/C++ toolchain, and SDL2 development headers.
 
 ```sh
-# 32-bit build (currently the fully-featured one; needs multilib + 32-bit SDL2)
+# native build (Linux x86-64 / aarch64, macOS — the primary configuration)
+cmake -B build -G Ninja
+ninja -C build
+
+# 32-bit x86 build (needs multilib + 32-bit SDL2)
 cmake -B build-port -G Ninja --toolchain port/cmake/i686-toolchain.cmake
 ninja -C build-port
-
-# native x86-64 build (menus + world render; prop/audio expansion in progress)
-cmake -B build-64 -G Ninja
-ninja -C build-64
 ```
 
-Place the ROM at `data/ge007.u.z64` and run `./build-port/ge007-port`.
-`--selftest` verifies the asset pipeline without opening a window.
+Cross targets: `port/cmake/aarch64-toolchain.cmake` and
+`port/cmake/mingw64-toolchain.cmake` (Windows), with container-based
+build+smoke scripts in `port/tests/` (`run_arm64.sh`, `run_win64.sh`).
+The Android APK lives in [`android/`](./android/) (`fetch_sdl.sh`, then
+`gradle assembleDebug`), and the PortMaster zip assembles via
+`port/dist/portmaster/build_package.sh`. On macOS, `brew install ninja
+sdl2 gnu-sed` first.
+
+Place the ROM at `data/ge007.u.z64` and run `./build/ge007-port`
+(without a local `data/` folder the port uses per-user directories —
+`~/.local/share/ge007/`, `%AppData%\ge007\`, or the Android app's
+external-files dir). `--selftest` verifies the asset pipeline without
+opening a window. The ROM-gated regression suites are
+`port/tests/run_goldens.sh` (bit-exact frames/PCM/state hashes) plus the
+cross-target smoke scripts above.
 
 See [`port/README.md`](./port/README.md) for controls, configuration
 (`~/.config/ge007/input.ini`), and the debug environment variables.
