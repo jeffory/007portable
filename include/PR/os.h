@@ -992,7 +992,12 @@ extern u32 		osGetMemSize(void);
 
 /* Printf */
 
+/* PORT: Darwin's fortify layer #defines sprintf, so this SDK-era
+ * redeclaration would expand into garbage there; every modern libc
+ * declares it in <stdio.h> anyway */
+#if !defined(__APPLE__) && !defined(sprintf)
 extern int		sprintf(char *s, const char *fmt, ...);
+#endif
 extern void		osSyncPrintf(const char *fmt, ...);
 extern void		osAsyncPrintf(const char *fmt, ...);
 extern int		osSyncGetChars(char *buf);
