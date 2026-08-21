@@ -107,9 +107,12 @@ file(GLOB GAME_SOURCES CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/game/*.
 # AND/CALL macros have GCC-compatible PC branches, so the generated file
 # compiles natively and its 18 AI byte arrays are byte-exact vs the ROM.
 list(REMOVE_ITEM GAME_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/game/chraidata.c)
+# ai_print.sed leans on GNU regex behavior and its output is validated
+# byte-exact against the ROM — require GNU sed (brew gnu-sed on macOS)
+find_program(GE_SED NAMES gsed sed REQUIRED)
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/gen/chraidata_ai.c
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/gen
-  COMMAND sed -E -f ${CMAKE_CURRENT_SOURCE_DIR}/port/tools/ai_print.sed
+  COMMAND ${GE_SED} -E -f ${CMAKE_CURRENT_SOURCE_DIR}/port/tools/ai_print.sed
           ${CMAKE_CURRENT_SOURCE_DIR}/src/game/chraidata.c > ${CMAKE_BINARY_DIR}/gen/chraidata_ai.c
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/game/chraidata.c ${CMAKE_CURRENT_SOURCE_DIR}/port/tools/ai_print.sed
   COMMENT "ConvertAIPRINT: chraidata.c -> gen/chraidata_ai.c"
