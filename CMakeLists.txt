@@ -317,6 +317,12 @@ target_compile_options(ge007-port PRIVATE
     -Wno-error=return-type
     -Wno-format-security
     -Wno-deprecated-non-prototype
+    # IDO-era implicit declarations: kept visible as warnings (they can
+    # truncate pointers on 64-bit — the dangerous ones are fixed), but
+    # AppleClang hard-errors on them even in gnu89
+    -Wno-error=implicit-function-declaration
+    -Wno-error=implicit-int
+    -Wno-deprecated-declarations
   >
   $<$<COMPILE_LANGUAGE:CXX>:
     -fno-strict-aliasing
