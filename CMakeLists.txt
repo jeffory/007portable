@@ -139,7 +139,6 @@ set(KEPT_SRC
   src/speed_graph.c
   # src/sprintf.c excluded: it sits on libultra's _Printf engine; libc sprintf serves
   src/stacks.c
-  src/str.c
   src/token.c
   src/vi.c
 )
