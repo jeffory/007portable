@@ -42,6 +42,12 @@ jobs:
       - name: Build
         run: ninja -C build | tee /tmp/build.log
 
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge007-port-linux-i686
+          path: build/ge007-port
+
       - name: Warning gate
         run: |
           # enum-signedness detector: 5 known always-true-on-IDO-too sites
@@ -64,6 +70,12 @@ jobs:
       - name: Build
         run: ninja -C build
 
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge007-port-linux-x86_64
+          path: build/ge007-port
+
   build-arm64:
     runs-on: ubuntu-latest
     steps:
@@ -78,6 +90,12 @@ jobs:
       - name: Build
         run: ninja -C build-arm64
         # ROM-gated qemu smoke tests run locally: port/tests/run_arm64.sh
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge007-port-linux-arm64
+          path: build-arm64/ge007-port
 
   build-win64:
     runs-on: ubuntu-latest
@@ -109,6 +127,21 @@ jobs:
         run: ninja -C build-win64
         # ROM-gated Wine smoke test runs locally: port/tests/run_win64.sh
 
+      - name: Stage runtime DLLs
+        # SDL2.dll from the official devel tarball; winpthread from the
+        # posix-flavor toolchain the exe links against
+        run: |
+          mkdir -p dist-win64
+          cp build-win64/ge007-port.exe dist-win64/
+          cp SDL2-2.30.9/x86_64-w64-mingw32/bin/SDL2.dll dist-win64/
+          cp /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll dist-win64/ ||             cp /usr/lib/gcc/x86_64-w64-mingw32/*/libwinpthread-1.dll dist-win64/ || true
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge007-port-windows-x86_64
+          path: dist-win64/
+
   build-android:
     runs-on: ubuntu-latest
     steps:
@@ -128,6 +161,12 @@ jobs:
       - name: Check APK contents
         run: unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -E "libmain.so|libSDL2.so"
 
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge007-port-android-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+
   build-macos:
     runs-on: macos-latest
     steps:
@@ -144,3 +183,9 @@ jobs:
         run: ninja -C build-macos
         # ROM-gated runtime tests stay local; this proves the port compiles
         # and links for arm64 macOS (AppleClang + Homebrew SDL2)
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: ge007-port-macos-arm64
+          path: build-macos/ge007-port
