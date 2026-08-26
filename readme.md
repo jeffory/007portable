@@ -35,13 +35,13 @@ binaries as artifacts — grab them from any green run on the
 | 2 | Full regression net + CI matrix (deterministic replay + exact goldens; 6-target CI) | done |
 | 3 | Native 64-bit memory model — PIE-safe; unlocked ARM, Android and macOS | done |
 | 4 | GLES3 renderer path, audio thread, portable file paths, sky renderer | done¹ |
-| 5 | Packaging: PortMaster zip, Android APK, Windows build, macOS build, CI artifacts | done² |
+| 5 | Packaging: AppImage, PortMaster zip, Android APK, Windows build, macOS build, CI artifacts | done² |
 | 6 | Profiling and enhancements (LTO, widescreen, >60 fps interpolation) | planned |
 
 ¹ the converted-asset disk cache was dropped (load times don't need it);
 two cosmetic issues remain tracked (aim-sight ring size, fog shade-alpha).
-² AppImage still to do; PortMaster zip and APK await validation on real
-handheld/phone hardware, and the macOS binary on a real Mac.
+² machine-side complete; the PortMaster zip and APK await validation on
+real handheld/phone hardware, and the macOS binary on a real Mac.
 
 ## N64 support
 
