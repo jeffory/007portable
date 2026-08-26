@@ -118,4 +118,4 @@ scripts/__pycache__/generate_prop_model_c.cpython-310.pyc
 /build-port/
 qemu_*.core
 *.core
-dist/
+/dist/

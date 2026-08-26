@@ -76,6 +76,15 @@ jobs:
           name: ge007-port-linux-x86_64
           path: build/ge007-port
 
+      - name: Build AppImage
+        run: port/dist/appimage/build_appimage.sh build
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: GE007-x86_64-AppImage
+          path: dist/GE007-x86_64.AppImage
+
   build-arm64:
     runs-on: ubuntu-latest
     steps:

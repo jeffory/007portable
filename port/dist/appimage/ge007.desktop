@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=GoldenEye 007 (PC port)
+Comment=Native PC port of the GoldenEye 007 decompilation (requires your own ROM)
+Exec=ge007-port
+Icon=ge007
+Categories=Game;
+Terminal=false
