@@ -16,6 +16,7 @@
 #include <windows.h>
 #else
 #include <sys/mman.h>
+#include <unistd.h>
 #endif
 #endif
 #include "port.h"
@@ -25,6 +26,43 @@
 #define PORT_ARENA_SIZE (32 * 1024 * 1024)
 
 static u8 *sArena;
+
+#define PORT_LOW_BASE 0x40000000u /* clear of the image (0x400000) and brk */
+#define PORT_LOW_END  0x7FFFFFF0u /* keep bit 31 clear: pointers the game
+                                   * parks in an s32 must not sign-extend */
+
+#if IS_64_BIT
+/* Bump cursor, shared by every 64-bit path. sLowStageBase records where the
+ * permanent boot allocations end; each stage load frees everything past it
+ * (portLowAllocStageScopeBegin) and rewinds the cursor there, so replaying
+ * stages reuses the same address range instead of climbing out of the
+ * window. The wrap in portLowAlloc is the backstop for anything the rewind
+ * does not cover. */
+static uintptr_t sLowHint = PORT_LOW_BASE;
+static uintptr_t sLowStageBase;
+
+/* Address space each request consumes. Windows is stuck with VirtualAlloc's
+ * 64KB reservation granularity; on POSIX rounding to 64KB instead of the
+ * page burned ~200x the address space per small allocation - the model64
+ * node extensions alone (a few hundred bytes each, thousands of them)
+ * chewed through the whole window. */
+static u32 lowAlignUp(u32 size)
+{
+#if defined(_WIN32)
+    return (size + 0xFFFFu) & ~0xFFFFu;
+#else
+    static u32 sPage;
+    u32 mask;
+
+    if (sPage == 0) {
+        long p = sysconf(_SC_PAGESIZE);
+        sPage = p > 0 ? (u32)p : 4096u;
+    }
+    mask = sPage - 1u;
+    return (size + mask) & ~mask;
+#endif
+}
+#endif
 
 /* --- stage-scoped allocation tracking (the stage-reload leak fix) ----------
  * Everything portLowAlloc'd after a stage load begins (setup/stan/model
@@ -95,6 +133,18 @@ void portLowAllocStageScopeBegin(void)
     }
     sStageBytes = 0;
     sStageScope = 1;
+#if IS_64_BIT
+    /* Everything past sLowStageBase was just unmapped, so hand the cursor
+     * back to it. Without this the cursor only ever climbs: the attract
+     * sequence reloads stages forever and walked it past 2GB (where any
+     * pointer the game parks in an s32 sign-extends into a segfault) and
+     * then out of the window entirely, with only a few MB actually live. */
+    if (sLowStageBase == 0) {
+        sLowStageBase = sLowHint; /* boot allocations below here are permanent */
+    } else {
+        sLowHint = sLowStageBase;
+    }
+#endif
     if (n != 0 && getenv("PORT_LOAD_TRACE") != NULL) {
         fprintf(stderr, "port/mem: freed %d stage allocations (%u bytes)\n", n, freed);
     }
@@ -104,15 +154,25 @@ void portLowAllocStageScopeBegin(void)
  * Allocate memory the game may take pointers into.
  *
  * The game's data model is 32-bit: asset blobs store pointers in 4-byte
- * slots and shared code truncates addresses through (u32) casts. On the
- * 64-bit build every such allocation therefore comes from the low 4GB
- * (the -no-pie image itself sits at 0x400000), so u32 truncation
- * round-trips losslessly. On 32-bit this is plain malloc.
+ * slots and shared code round-trips addresses through (u32) - and, in
+ * places, through s32. On the 64-bit build every such allocation therefore
+ * comes from the low 2GB, so both truncation AND sign extension are
+ * lossless. Bit 31 must stay clear: a pointer parked in an s32 and read
+ * back widens to 0xffffffff8xxxxxxx above 2GB, which is a segfault the
+ * moment it is dereferenced. That is exactly the window x86-64's old
+ * MAP_32BIT gave us (the first 2GB), now enforced on every 64-bit target.
+ * On 32-bit this is plain malloc.
  *
- * The low-4GB reservation used to be mmap MAP_32BIT, which exists only on
- * x86-64 Linux. For aarch64/Android the same guarantee comes from scanning
- * ascending hint addresses below 4GB with MAP_FIXED_NOREPLACE (Linux 4.17+,
+ * MAP_32BIT exists only on x86-64 Linux, so the guarantee comes from
+ * scanning ascending hint addresses with MAP_FIXED_NOREPLACE (Linux 4.17+,
  * bionic ok); a bump cursor keeps successive allocations from rescanning.
+ * The cursor WRAPS at the ceiling: memory is freed (stage reloads munmap
+ * the whole stage list) but the cursor cannot reclaim those holes on its
+ * own, so a looping attract sequence used to march it up through 2GB -
+ * and out of the window entirely - while barely any memory was live.
+ * MAP_FIXED_NOREPLACE makes rescanning from the base safe: occupied
+ * ranges simply fail and the scan steps over them.
+ *
  * The single code path runs on x86-64 too so it is always exercised.
  */
 #if IS_64_BIT
@@ -124,23 +184,34 @@ void portLowAllocStageScopeBegin(void)
 void *portLowAlloc(u32 size)
 {
 #if IS_64_BIT && defined(_WIN32)
-    /* same low-4GB guarantee via VirtualAlloc explicit-base scan */
-    static uintptr_t sHint = 0x40000000;
-    uintptr_t hint = sHint;
-    u32 aligned = (size + 0xFFFFu) & ~0xFFFFu;
+    /* same low-2GB guarantee via VirtualAlloc explicit-base scan */
+    uintptr_t hint = sLowHint;
+    u32 aligned = lowAlignUp(size);
+    int wrapped = 0;
 
-    while (hint + aligned <= 0xFFFFFFF0u) {
-        void *p = VirtualAlloc((void *)hint, size, MEM_COMMIT | MEM_RESERVE,
-                               PAGE_READWRITE);
+    for (;;) {
+        void *p;
+
+        if (hint + aligned > PORT_LOW_END) {
+            if (wrapped) {
+                break;
+            }
+            hint = PORT_LOW_BASE;
+            wrapped = 1;
+        }
+        p = VirtualAlloc((void *)hint, size, MEM_COMMIT | MEM_RESERVE,
+                         PAGE_READWRITE);
 
         if (p != NULL) {
-            sHint = (uintptr_t)p + aligned;
+            sLowHint = (uintptr_t)p + aligned;
             stageTrack(p, size);
             return p;
         }
-        hint += aligned > 0x1000000u ? aligned : 0x1000000u;
+        /* a wrapped pass steps by the request so it can land in the
+         * small holes a 16MB stride flies over */
+        hint += wrapped ? aligned : (aligned > 0x1000000u ? aligned : 0x1000000u);
     }
-    fprintf(stderr, "port: no low-4GB address space for %u bytes\n", size);
+    fprintf(stderr, "port: no low-2GB address space for %u bytes\n", size);
     return NULL;
 #elif IS_64_BIT && defined(__APPLE__)
     /* Darwin has no MAP_FIXED_NOREPLACE; the kernel honors a plain hint
@@ -148,45 +219,66 @@ void *portLowAlloc(u32 size)
      * below 4GB (unmap and advance otherwise). Requires the link to have
      * shrunk __PAGEZERO (-Wl,-pagezero_size,0x1000) — the macOS default
      * reserves the entire low 4GB. */
-    static uintptr_t sHint = 0x40000000;
-    uintptr_t hint = sHint;
-    u32 aligned = (size + 0xFFFFu) & ~0xFFFFu;
+    uintptr_t hint = sLowHint;
+    u32 aligned = lowAlignUp(size);
+    int wrapped = 0;
 
-    while (hint + aligned <= 0xFFFFFFF0u) {
-        void *p = mmap((void *)hint, size, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    for (;;) {
+        void *p;
 
-        if (p != MAP_FAILED && (uintptr_t)p + aligned <= 0xFFFFFFF0u) {
-            sHint = (uintptr_t)p + aligned;
+        if (hint + aligned > PORT_LOW_END) {
+            if (wrapped) {
+                break;
+            }
+            hint = PORT_LOW_BASE;
+            wrapped = 1;
+        }
+        p = mmap((void *)hint, size, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+
+        if (p != MAP_FAILED && (uintptr_t)p + aligned <= PORT_LOW_END) {
+            sLowHint = (uintptr_t)p + aligned;
             stageTrack(p, size);
             return p;
         }
         if (p != MAP_FAILED) {
             munmap(p, size); /* kernel ignored the hint: landed high */
         }
-        hint += aligned > 0x1000000u ? aligned : 0x1000000u;
+        /* a wrapped pass steps by the request so it can land in the
+         * small holes a 16MB stride flies over */
+        hint += wrapped ? aligned : (aligned > 0x1000000u ? aligned : 0x1000000u);
     }
-    fprintf(stderr, "port: no low-4GB address space for %u bytes "
+    fprintf(stderr, "port: no low-2GB address space for %u bytes "
                     "(is -pagezero_size in the link flags?)\n", size);
     return NULL;
 #elif IS_64_BIT
-    /* start clear of the -no-pie image (0x400000) and the brk heap */
-    static uintptr_t sHint = 0x40000000;
-    uintptr_t hint = sHint;
-    u32 aligned = (size + 0xFFFFu) & ~0xFFFFu;
+    uintptr_t hint = sLowHint;
+    u32 aligned = lowAlignUp(size);
+    int wrapped = 0;
 
-    while (hint + aligned <= 0xFFFFFFF0u) {
-        void *p = mmap((void *)hint, size, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
+    for (;;) {
+        void *p;
+
+        if (hint + aligned > PORT_LOW_END) {
+            if (wrapped) {
+                break; /* a full pass found no free range */
+            }
+            hint = PORT_LOW_BASE;
+            wrapped = 1;
+        }
+        p = mmap((void *)hint, size, PROT_READ | PROT_WRITE,
+                 MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED_NOREPLACE, -1, 0);
 
         if (p != MAP_FAILED) {
-            sHint = (uintptr_t)p + aligned;
+            sLowHint = (uintptr_t)p + aligned;
             stageTrack(p, size);
             return p;
         }
-        hint += aligned > 0x1000000u ? aligned : 0x1000000u; /* skip >=16MB */
+        /* a wrapped pass steps by the request so it can land in the
+         * small holes a 16MB stride flies over */
+        hint += wrapped ? aligned : (aligned > 0x1000000u ? aligned : 0x1000000u);
     }
-    fprintf(stderr, "port: no low-4GB address space for %u bytes\n", size);
+    fprintf(stderr, "port: no low-2GB address space for %u bytes\n", size);
     return NULL;
 #else
     {
