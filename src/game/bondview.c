@@ -816,7 +816,7 @@ s32 get_BONDdata_field_10E0(void) {
     return g_CurrentPlayer->field_10E0;
 }
 
-void *currentPlayerSetMatrix10CC(Mtxf *matrix) {
+void currentPlayerSetMatrix10CC(Mtxf *matrix) {
     g_CurrentPlayer->field_10E8 = g_CurrentPlayer->field_10CC;
     g_CurrentPlayer->field_10CC = matrix;
 }

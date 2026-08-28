@@ -1468,7 +1468,7 @@ void bondinvIncrementHeldTime(s32 weapon1, s32 weapon2)
     }
 }
 
-s32 bondinvGetWeaponOfChoice(s32 *weapon1, s32 *weapon2)
+void bondinvGetWeaponOfChoice(s32 *weapon1, s32 *weapon2)
 {
     s32 mosttime = -1;
     s32 i;

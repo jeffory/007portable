@@ -2,7 +2,7 @@
 #include "indy_commands.h"
 #include "indy_comms.h"
 
-s32 indycommInit(void) {
+void indycommInit(void) {
     if (indy_ready != 1)
     {
         indy_ready = 1;

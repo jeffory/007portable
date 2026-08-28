@@ -1,8 +1,7 @@
 #ifndef _INDY_COMMS_H_
 #define _INDY_COMMS_H_
 #include <ultra64.h>
-
-s32 indycommInit(void);
+void               indycommInit(void);
 void indycommHostinit(void);
 void indycommHostLoadFile(char *filename, u8 *targetloc);
 void indycommHostSendDump(char *filename, u8 *data, u32 size);

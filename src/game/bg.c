@@ -5054,7 +5054,7 @@ void bgClearDataPortalsControlBytes1Low2Bits(s32 index)
  *
  * Address 0x7F0B9B64.
  */
-s8 bgSwapConnectedRooms(s32 index)
+void bgSwapConnectedRooms(s32 index)
 {
     u8 t;
 
