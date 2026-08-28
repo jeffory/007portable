@@ -290,7 +290,7 @@ void alloc_load_expand_ani_table(void)
     
     osCreateMesgQueue(&animMsgQ, animMesg, 8);
     if (animations_frame_buffer == NULL) {
-        animations_frame_buffer = portLowAlloc(ANIMATIONS_FRAME_BUFFER_SIZE);
+        animations_frame_buffer = portLowAllocPersistent(ANIMATIONS_FRAME_BUFFER_SIZE);
     }
     D_80029D60.animBufferPtr1 = animations_frame_buffer;
     D_80029D60.animBufferPtr2 = animations_frame_buffer;

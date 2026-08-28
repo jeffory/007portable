@@ -712,7 +712,7 @@ static void chraiRelocateGlobalLists(void)
     for (i = 0; g_GlobalAILists[i].ailist; i++) {
         for (j = 0; j < g_PortAiArrayCount; j++) {
             if ((const void *)g_GlobalAILists[i].ailist == (const void *)g_PortAiArrays[j].data) {
-                void *low = portLowAlloc(g_PortAiArrays[j].len);
+                void *low = portLowAllocPersistent(g_PortAiArrays[j].len);
                 memcpy(low, g_PortAiArrays[j].data, g_PortAiArrays[j].len);
                 g_GlobalAILists[i].ailist = low;
                 break;

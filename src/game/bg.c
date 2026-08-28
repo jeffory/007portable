@@ -1258,7 +1258,7 @@ void bgFindRoomsAlongSegment(coord3d *fromPos, coord3d *toPos, u8 *fromRooms, u8
 Gfx *bgLevelRender(Gfx *arg0)
 {
     if (GlobalLight == NULL) {
-        GlobalLight = portLowAlloc(sizeof(Lights1));
+        GlobalLight = portLowAllocPersistent(sizeof(Lights1));
         *GlobalLight = sGlobalLightInit;
     }
     gSPSetLights1(arg0++, (*GlobalLight));

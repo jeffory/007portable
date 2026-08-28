@@ -340,7 +340,7 @@ Gfx *load_display_rare_logo(Gfx *gdl, s32 arg1, s32 arg2, s32 arg3, s32 arg4) {
 #endif
     gSPMatrix(gdl++, osVirtualToPhysical(&matrixBufferRareLogo2[D_8002A7D0]), (G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW));
     if (gunbarrelLights == NULL) {
-        gunbarrelLights = portLowAlloc(sizeof(Lights1));
+        gunbarrelLights = portLowAllocPersistent(sizeof(Lights1));
         *gunbarrelLights = sGunbarrelLightsInit;
     }
     gSPSetLights1(gdl++, (*gunbarrelLights));

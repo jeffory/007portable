@@ -53,15 +53,15 @@ void init_load_objpos_table(void)
     g_OnScreenPropList[0] = NULL;
     g_LastOnScreenProp = (PropRecord *) g_OnScreenPropList;
     if (g_Props == NULL) {
-        g_Props = portLowAlloc(MAX_PROPS * sizeof(PropRecord)); /* PIE-safe pool */
+        g_Props = portLowAllocPersistent(MAX_PROPS * sizeof(PropRecord)); /* PIE-safe pool */
         memset(g_Props, 0, MAX_PROPS * sizeof(PropRecord));
     }
     if (g_Projectiles == NULL) {
-        g_Projectiles = portLowAlloc(PROJECTILES_ARR_MAX * sizeof(Projectile));
+        g_Projectiles = portLowAllocPersistent(PROJECTILES_ARR_MAX * sizeof(Projectile));
         memset(g_Projectiles, 0, PROJECTILES_ARR_MAX * sizeof(Projectile));
-        g_Embedments = portLowAlloc(EMBEDMENT_ARR_MAX * sizeof(Embedment));
+        g_Embedments = portLowAllocPersistent(EMBEDMENT_ARR_MAX * sizeof(Embedment));
         memset(g_Embedments, 0, EMBEDMENT_ARR_MAX * sizeof(Embedment));
-        g_Casings = portLowAlloc(20 * sizeof(CasingRecord));
+        g_Casings = portLowAllocPersistent(20 * sizeof(CasingRecord));
         memset(g_Casings, 0, 20 * sizeof(CasingRecord));
     }
     g_FreeProps = g_Props;

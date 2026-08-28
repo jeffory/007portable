@@ -31,6 +31,7 @@ void portMemInit(void);
 void *portMemArenaStart(void);
 /* low-4GB allocator: any buffer the game can point a u32 at (64-bit build) */
 void *portLowAlloc(u32 size);
+void *portLowAllocPersistent(u32 size);
 void portLowFree(void *ptr, u32 size);
 /* free the previous stage's tracked allocations, start tracking anew;
  * called at the top of lvlStageLoad (the stage-reload leak fix) */

@@ -336,7 +336,7 @@ Lights1 *ninlogolight;
 static Lights1 *frontLowLight(Lights1 **slot, const Lights1 *init)
 {
     if (*slot == NULL) {
-        *slot = portLowAlloc(sizeof(Lights1));
+        *slot = portLowAllocPersistent(sizeof(Lights1));
         **slot = *init;
     }
     return *slot;

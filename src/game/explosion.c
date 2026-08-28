@@ -1499,7 +1499,7 @@ Gfx *explosionRenderPropSmoke(PropRecord *arg0, Gfx *gdl, s32 withalpha)
     gdl = applyRoomMatrixToDisplayList(gdl, temp_s1);
 
     if (dword_CODE_bss_8007A100 == NULL) {
-        dword_CODE_bss_8007A100 = portLowAlloc(sizeof(Mtx)); /* zeroed, as the bss original */
+        dword_CODE_bss_8007A100 = portLowAllocPersistent(sizeof(Mtx)); /* zeroed, as the bss original */
     }
     gSPMatrix(gdl++, osVirtualToPhysical((void*)dword_CODE_bss_8007A100), G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 

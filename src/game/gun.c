@@ -103,7 +103,7 @@ Lights1 *g_WeaponEnvmapLight;
 Lights1 *gunGetEnvmapLight(void)
 {
     if (g_WeaponEnvmapLight == NULL) {
-        g_WeaponEnvmapLight = portLowAlloc(sizeof(Lights1));
+        g_WeaponEnvmapLight = portLowAllocPersistent(sizeof(Lights1));
         *g_WeaponEnvmapLight = sWeaponEnvmapLightInit;
     }
     return g_WeaponEnvmapLight;

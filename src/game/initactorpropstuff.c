@@ -295,7 +295,7 @@ void initCasingPool(void)
     CasingRecord *ptr;
 
     if (g_Casings == NULL) {
-        g_Casings = portLowAlloc(20 * sizeof(CasingRecord)); /* PIE-safe pool */
+        g_Casings = portLowAllocPersistent(20 * sizeof(CasingRecord)); /* PIE-safe pool */
         memset(g_Casings, 0, 20 * sizeof(CasingRecord));
     }
     end = &g_Casings[20];

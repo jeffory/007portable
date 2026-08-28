@@ -135,13 +135,16 @@ void portLowAllocStageScopeBegin(void)
     sStageScope = 1;
 #if IS_64_BIT
     /* Everything past sLowStageBase was just unmapped, so hand the cursor
-     * back to it. Without this the cursor only ever climbs: the attract
+     * back to it. PORT_NO_REWIND=1 keeps the cursor climbing instead, so a
+     * freed address is never handed out twice - a stale write then faults on
+     * unmapped memory at the instruction that makes it, rather than quietly
+     * shredding whatever moved in. Without this the cursor only ever climbs: the attract
      * sequence reloads stages forever and walked it past 2GB (where any
      * pointer the game parks in an s32 sign-extends into a segfault) and
      * then out of the window entirely, with only a few MB actually live. */
     if (sLowStageBase == 0) {
         sLowStageBase = sLowHint; /* boot allocations below here are permanent */
-    } else {
+    } else if (getenv("PORT_NO_REWIND") == NULL) {
         sLowHint = sLowStageBase;
     }
 #endif
@@ -181,7 +184,7 @@ void portLowAllocStageScopeBegin(void)
 #endif
 #endif
 
-void *portLowAlloc(u32 size)
+static void *lowAlloc(u32 size, int stageScoped)
 {
 #if IS_64_BIT && defined(_WIN32)
     /* same low-2GB guarantee via VirtualAlloc explicit-base scan */
@@ -204,7 +207,7 @@ void *portLowAlloc(u32 size)
 
         if (p != NULL) {
             sLowHint = (uintptr_t)p + aligned;
-            stageTrack(p, size);
+            if (stageScoped) { stageTrack(p, size); }
             return p;
         }
         /* a wrapped pass steps by the request so it can land in the
@@ -238,7 +241,7 @@ void *portLowAlloc(u32 size)
 
         if (p != MAP_FAILED && (uintptr_t)p + aligned <= PORT_LOW_END) {
             sLowHint = (uintptr_t)p + aligned;
-            stageTrack(p, size);
+            if (stageScoped) { stageTrack(p, size); }
             return p;
         }
         if (p != MAP_FAILED) {
@@ -271,7 +274,7 @@ void *portLowAlloc(u32 size)
 
         if (p != MAP_FAILED) {
             sLowHint = (uintptr_t)p + aligned;
-            stageTrack(p, size);
+            if (stageScoped) { stageTrack(p, size); }
             return p;
         }
         /* a wrapped pass steps by the request so it can land in the
@@ -283,10 +286,37 @@ void *portLowAlloc(u32 size)
 #else
     {
         void *p = malloc(size);
-        stageTrack(p, size);
+
+        if (stageScoped) {
+            stageTrack(p, size);
+        }
         return p;
     }
 #endif
+}
+
+/**
+ * Stage-scoped: freed wholesale by the next stage load.
+ */
+void *portLowAlloc(u32 size)
+{
+    return lowAlloc(size, 1);
+}
+
+/**
+ * Persistent: allocated once, cached in a global, alive for the process.
+ *
+ * The game's one-shot pools (props, projectiles, casings, the anim frame
+ * buffer, light and matrix singletons) follow `if (p == NULL) p = alloc()`,
+ * so a stage-scoped free leaves the global dangling and the next stage load
+ * writes through it - `g_Props[i].prev = &g_Props[i + 1]` shredded whatever
+ * had taken the pool's address, which after a menu round trip was the new
+ * level's stan. These never come back through portLowFree, so they are kept
+ * out of the stage list entirely; the low-window scan steps over them.
+ */
+void *portLowAllocPersistent(u32 size)
+{
+    return lowAlloc(size, 0);
 }
 
 void portLowFree(void *ptr, u32 size)

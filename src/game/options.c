@@ -1728,8 +1728,8 @@ Gfx *draw_background_health_and_armor(Gfx *gdl, Mtx *arg1, s32 zoom_squish)
     }
 
     if (gfx_background_8007B0A0 == NULL) {
-        gfx_background_8007B0A0 = portLowAlloc(sizeof(Mtx));
-        gfx_background_8007B0E0 = portLowAlloc(sizeof(Mtx));
+        gfx_background_8007B0A0 = portLowAllocPersistent(sizeof(Mtx));
+        gfx_background_8007B0E0 = portLowAllocPersistent(sizeof(Mtx));
     }
     guScale(gfx_background_8007B0A0, 0.25f, 0.25f, 0.25f);
 
