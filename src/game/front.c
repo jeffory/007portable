@@ -2236,7 +2236,7 @@ void toggle_deletion_menu_for_folder(int index)
  * Tick function for the file folder select screen. Rebuild's each folder model's render matrix
  * then handles input. Also keeps track of the 30 second idle timeout for going back to the legal screen.
  */
-s32 interface_menu05_fileselect(void)
+void interface_menu05_fileselect(void)
 {
     s32 walletnum;
     s32 foldernum;
@@ -3386,6 +3386,8 @@ Gfx *constructor_menu07_missionsel(Gfx *DL)
 
     DL = frontAddPreviousTabText(DL);
     DL = frontDrawCursor(DL);
+
+    return DL;
 }
 
 
