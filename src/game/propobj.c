@@ -6,6 +6,7 @@
 
   ---------------------------------------------------------------------*/
 
+#include <stdio.h>
 #include <ultra64.h>
 #include <math.h>
 #include <PR/libaudio.h>
@@ -783,8 +784,13 @@ void sub_GAME_7F04088C(ObjectRecord *baseobj, struct coord3d *pos, Mtxf *matrix,
     {
         ObjectRecord *roomObj;
         f32 distfromTileCenter;
-        f32 byrefA;
-        f32 byrefB;
+        /* chraiGetCollisionBounds writes a POINTER through the second
+         * out-param and an s32 through the third; declaring them f32 was
+         * harmless on the N64 (4 bytes either way) but on a 64-bit host the
+         * pointer store runs 8 bytes and takes out the next local - mStan,
+         * which then walked as NULL. */
+        struct rect4f *byrefPolygon;
+        s32 byrefEdges;
         f32 byrefC;
         f32 byrefD;
 
@@ -798,7 +804,7 @@ void sub_GAME_7F04088C(ObjectRecord *baseobj, struct coord3d *pos, Mtxf *matrix,
         if (roomObj)
         {
             PropRecord *roomObjProp = roomObj->prop;
-            chraiGetCollisionBounds(roomObjProp, &byrefA, &byrefB, &byrefC, &byrefD);
+            chraiGetCollisionBounds(roomObjProp, &byrefPolygon, &byrefEdges, &byrefC, &byrefD);
 
             if ((distfromTileCenter < byrefC) && (byrefD < ((mtxcopy.m[1][1] * (ymin - xmax)) + distfromTileCenter + 4.0f)))
             {
