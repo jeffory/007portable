@@ -533,6 +533,12 @@ static struct ShaderProgram* gfx_opengl_create_and_load_new_shader(uint64_t shad
         if (cc_features.opt_alpha_threshold) {
             append_line(fs_buf, &fs_len, "    if (texel.a < 8.0 / 256.0) discard;");
         }
+        /* ALPHA_CVG_SEL: the RDP blender takes its pixel alpha from coverage,
+         * not from the combiner. Alpha compare above still sees the combiner
+         * value (as on hardware); past this point the pixel is fully covered. */
+        if (cc_features.opt_cvg_opaque) {
+            append_line(fs_buf, &fs_len, "    texel.a = 1.0;");
+        }
         if (cc_features.opt_invisible) {
             append_line(fs_buf, &fs_len, "    texel.a = 0.0;");
         }

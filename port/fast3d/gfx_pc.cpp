@@ -1367,18 +1367,18 @@ static void gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx* verti
              * is 0 until ~the last 1% of clip depth); props and the
              * first-person gun are drawn with G_FOG CLEARED and fog via
              * G_RM_FOG_PRIM_A (constant fog-color alpha, CPU-computed), so
-             * shade alpha overwrite never applies to them. The BG combiner's
-             * alpha cycle is (COMBINED*SHADE); on hardware that fog-alpha
-             * output only feeds the blender through ALPHA_CVG_SEL, which
-             * replaces it with coverage - net effect nil. fast3d, however,
-             * feeds CC alpha into GL blending for those B2=1MA passes, so
-             * enabling the overwrite washes the world out. Until fast3d
-             * models ALPHA_CVG_SEL, keep vertex alpha here (matches PD port).
-             * PORT_RSP_FOG_ALPHA=1 remains as an experiment switch. */
+             * the shade-alpha overwrite never applies to them. The BG
+             * combiner's alpha cycle is (COMBINED*SHADE), and that alpha
+             * reaches the blender only through ALPHA_CVG_SEL, which replaces
+             * it with coverage - net effect nil. fast3d now models that
+             * (SHADER_OPT_CVG_OPAQUE), so the overwrite is safe; without it
+             * the fog factor (0 over most of the depth range) blended the
+             * whole world away. PORT_RSP_FOG_ALPHA=0 restores the old
+             * vertex-alpha behavior. */
             static int rspFogAlpha = -1;
             if (rspFogAlpha < 0) {
                 const char *e = getenv("PORT_RSP_FOG_ALPHA");
-                rspFogAlpha = e != NULL ? atoi(e) : 0;
+                rspFogAlpha = e != NULL ? atoi(e) : 1;
             }
             d->color.a = rspFogAlpha ? (uint8_t)d->fog : vcn->a;
         } else {
@@ -1545,6 +1545,11 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
     const bool use_grayscale = rdp.grayscale;
     const bool use_modulate = use_alpha && (rsp.extra_geometry_mode & G_MODULATE_EXT) != 0;
     const bool use_blur = (rdp.other_mode_h & (3U << G_MDSFT_TEXTFILT)) == G_TF_BLUR_EXT;
+    /* ALPHA_CVG_SEL without CVG_X_ALPHA: the RDP blender's pixel alpha is
+     * coverage, so the combiner's alpha never reaches the blend (GE's opaque
+     * BG passes rely on this - their alpha cycle carries the RSP fog factor).
+     * fast3d has no coverage, so a covered pixel is simply opaque. */
+    const bool cvg_opaque = (rdp.other_mode_l & (ALPHA_CVG_SEL | CVG_X_ALPHA)) == ALPHA_CVG_SEL;
 
     if (texture_edge) {
         use_alpha = true;
@@ -1576,6 +1581,9 @@ static void gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t vtx3_idx, bo
     }
     if (use_blur) {
         cc_options |= (uint64_t)SHADER_OPT_BLUR;
+    }
+    if (cvg_opaque && use_alpha) {
+        cc_options |= (uint64_t)SHADER_OPT_CVG_OPAQUE;
     }
 
     // If we are not using alpha, clear the alpha components of the combiner as they have no effect

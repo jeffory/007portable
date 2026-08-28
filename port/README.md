@@ -100,6 +100,22 @@ non-black pixel counts), `PORT_FINAL_PROBE=<n>` (backbuffer content at
 swap time), `PORT_RED_TEST=<alpha>` (present-path check),
 `PORT_TASK_TRACE=1` (gfx task rate).
 
+**Fog and coverage alpha.** The RSP overwrites vertex shade alpha with
+the fog factor when `G_FOG` is set, and GE's BG room geometry relies on
+that: its alpha combiner is `(COMBINED*SHADE)`, and the result reaches
+the blender only through `ALPHA_CVG_SEL`, which substitutes coverage for
+it. fast3d had no coverage model, so the fog factor (0 across all but
+the last ~1% of clip depth, `gSPFogPosition(995,1000)`) went straight
+into GL blending and dissolved the whole world — the port worked around
+it by keeping the untouched vertex alpha. fast3d now models
+`ALPHA_CVG_SEL` (a shader option that forces a covered pixel opaque
+after alpha compare, which still sees the combiner value as on
+hardware), so the RSP overwrite is accurate and on by default;
+`PORT_RSP_FOG_ALPHA=0` restores the old vertex-alpha fallback. The two
+paths render identically across dam/surface/facility/frigate — no pass
+in six levels feeds shade alpha into a fogged translucent draw — so the
+change is faithfulness, not a visible fix.
+
 Previously: milestone M3 — the Dam is playable and guards fight
 back. `./build-port/ge007-port --stage dam` boots straight into the
 mission: level geometry, textures, lighting and depth render; guards
@@ -111,7 +127,10 @@ compile byte-exact vs the retail ROM. Debug: `--verbose` prints
 per-30-frame triangle counts; `PORT_NO_Z` / `PORT_NO_FOG` isolate
 depth/fog; arrow keys = stick, Return = START, X/C = A/B, Space = Z
 (fire). Known cosmetics: guard vertical position drifts during long
-chases; aim-sight rings oversized.
+chases. (The aim sight was re-measured at window scales 1x-3x and draws
+1 texel per game pixel in its 32x32 rect, exactly as the RDP would — the
+old "oversized rings" note predates the texture-swizzle fixes and no
+longer reproduces.)
 
 Previously: The full intro renders through the PD port's `fast3d`
 (GL 3.0): legal screen, 3D Nintendo and Rare logos, the gunbarrel (with
