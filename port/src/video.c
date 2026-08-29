@@ -27,7 +27,9 @@ int portVideoInitFast3d(void)
     int scale = 2; /* window = 320x240 * scale */
 
     /* PORT_WINDOW_SCALE=<1..8>: window size multiple; PORT_FULLSCREEN=1:
-     * start fullscreen (desktop mode; Alt+Enter toggles at runtime). */
+     * start fullscreen (desktop mode; Alt+Enter toggles at runtime), =0
+     * windowed - which on Android is the only way to get the system bars
+     * back, since there it defaults to on. */
     {
         const char *e = getenv("PORT_WINDOW_SCALE");
 
@@ -48,11 +50,22 @@ int portVideoInitFast3d(void)
     set.window_settings.y = 100;
     {
         const char *e = getenv("PORT_FULLSCREEN");
+        /* Android has nowhere else to go: the window IS the screen, and a
+         * non-fullscreen SDL window leaves the status bar and the activity
+         * title bar sitting on top of it (the surface came back 1280x918 of
+         * 1280x960). Asking for fullscreen also makes SDL call
+         * SDLActivity.setWindowStyle(true), which is what turns on immersive
+         * sticky and hides the navigation bar. */
+#ifdef __ANDROID__
+        int on = e == NULL || atoi(e) != 0;
+#else
+        int on = e != NULL && atoi(e) != 0;
+#endif
 
-        set.window_settings.fullscreen = e != NULL;
+        set.window_settings.fullscreen = on;
         /* =2: exclusive (mode-setting) fullscreen — works without a window
          * manager; default (=1) is borderless desktop fullscreen. */
-        set.window_settings.fullscreen_is_exclusive = e != NULL && atoi(e) == 2;
+        set.window_settings.fullscreen_is_exclusive = on && e != NULL && atoi(e) == 2;
     }
 
     gfx_current_native_viewport.width = 320;
