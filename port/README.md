@@ -167,6 +167,11 @@ music PCM byte-for-byte, and gameplay state hashes
 position/view and every chr's action+position; `PORT_STATE_HASH_EXIT=1`
 exits after the last one).
 
+`--env NAME=VALUE` on the command line (repeatable) sets an environment
+variable before anything reads one — the way to use every knob below on
+Android, where an activity has no environment at all (see
+[`android/README.md`](../android/README.md)).
+
 `PORT_POS_TRACE=<n>` prints Bond's state every n ticks — control style,
 vertical look angle, position, feet height, the ground height under him
 and his vertical velocity. It is the quickest way to tell a movement bug

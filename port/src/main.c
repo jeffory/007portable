@@ -90,12 +90,36 @@ static int runSelftest(void)
     return 0;
 }
 
+/* --env NAME=VALUE: set an environment variable before anything reads one.
+ * Every debug knob in the port is an env var, and Android has no way to
+ * give an activity an environment - the launcher and `am start` both
+ * ignore it - so on a device this flag (via GEActivity's intent extras)
+ * is the only way to reach them. putenv wants the string to stay valid
+ * for the life of the process, so the copy is deliberately never freed. */
+static void setEnvArg(const char *assignment)
+{
+    const char *eq = strchr(assignment, '=');
+    char *copy;
+
+    if (eq == NULL || eq == assignment) {
+        fprintf(stderr, "port: --env wants NAME=VALUE, got \"%s\"\n", assignment);
+        exit(2);
+    }
+    copy = strdup(assignment);
+    if (copy == NULL || putenv(copy) != 0) {
+        fprintf(stderr, "port: --env %s failed\n", assignment);
+        exit(2);
+    }
+}
+
 static void parseArgs(int argc, char **argv)
 {
     int i;
 
     for (i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--selftest") == 0) {
+        if (strcmp(argv[i], "--env") == 0 && i + 1 < argc) {
+            setEnvArg(argv[++i]);
+        } else if (strcmp(argv[i], "--selftest") == 0) {
             g_PortConfig.selftest = 1;
         } else if (strcmp(argv[i], "--stub-stage") == 0) {
             g_PortConfig.stubstage = 1;
@@ -110,7 +134,8 @@ static void parseArgs(int argc, char **argv)
         } else {
             fprintf(stderr,
                     "usage: %s [--rom path] [--selftest] [--stub-stage] [--verbose]\n"
-                    "          [--stage <name|levelid>] [--hard <0-3>]\n",
+                    "          [--stage <name|levelid>] [--hard <0-3>]\n"
+                    "          [--env NAME=VALUE]...\n",
                     argv[0]);
             exit(2);
         }

@@ -24,10 +24,33 @@ No assets ship. Put the US ROM (z64, sha1
 (paths.c prefers SDL's Android external storage dir; a SAF picker is
 future work.)
 
+## Command line
+
+An Android activity gets no argv and no environment, so `GEActivity`
+takes SDL_main's command line from the launch intent — the only way to
+reach the port's flags and its `PORT_*` debug knobs on a device:
+
+    adb shell am force-stop com.ge007.port
+    adb shell "am start -n com.ge007.port/.GEActivity \
+        --es args '--stage dam --env PORT_POS_TRACE=60'"
+
+`--es args "..."` is split on whitespace; `--esa args a,b,c` is taken
+verbatim for an argument that contains one. `--env NAME=VALUE` (repeat
+as needed) sets an environment variable before anything reads one, so
+every knob in port/README.md works here too — including
+`--env PORT_FULLSCREEN=0` to get the system bars back.
+
+**The force-stop matters.** The activity is `singleInstance`: starting it
+again while it runs delivers `onNewIntent`, never re-enters SDL_main, and
+silently ignores the new arguments.
+
 ## Testing on a device
 
     port/tests/run_android.sh            # install, push the ROM, drive into the Dam
     port/tests/run_android.sh play 100   # ...then walk, turn and shoot
+
+    ARGS='--stage dam' PRESSES=0 \
+        port/tests/run_android.sh play 100   # skip the frontend entirely
 
 `play` is the one that reaches the AI, and it reports the input that
 killed the app plus how to symbolise the tombstone. Input note: `adb

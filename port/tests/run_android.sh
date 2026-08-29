@@ -8,7 +8,14 @@
 #                                          shoot for n inputs (default 60)
 #
 # Env: SERIAL (adb device, default: the only one attached), APK, PRESSES,
-#      ROM (default data/ge007.u.z64).
+#      ROM (default data/ge007.u.z64), ARGS (command line for SDL_main).
+#
+# ARGS goes to the activity as an intent extra, which is the only way to
+# reach the port's flags on Android - an activity gets no argv and no
+# environment. Booting straight into a stage skips the frontend entirely:
+#
+#   ARGS='--stage dam --env PORT_POS_TRACE=60' PRESSES=0 \
+#       port/tests/run_android.sh play 60
 #
 # `play` is the one that reaches the AI: firing brings guards, and a guard
 # deciding to attack is a different code path from anything the frontend
@@ -35,6 +42,7 @@ FILES=/sdcard/Android/data/$PKG/files
 APK=${APK:-android/app/build/outputs/apk/debug/app-debug.apk}
 ROM=${ROM:-data/ge007.u.z64}
 PRESSES=${PRESSES:-7}
+ARGS=${ARGS:-}
 MODE=${1:-install}
 PLAYFOR=${2:-60}
 
@@ -65,10 +73,15 @@ fi
 echo "== launching"
 $ADB shell am force-stop $PKG
 $ADB logcat -c
-$ADB shell am start -n $ACT >/dev/null 2>&1
+if [ -n "$ARGS" ]; then
+    echo "   args: $ARGS"
+    $ADB shell "am start -n $ACT --es args '$ARGS'" >/dev/null 2>&1
+else
+    $ADB shell am start -n $ACT >/dev/null 2>&1
+fi
 sleep 25
 
-echo "== driving the frontend ($PRESSES x START)"
+[ "$PRESSES" -gt 0 ] && echo "== driving the frontend ($PRESSES x START)"
 for i in $(seq 1 "$PRESSES"); do
     $ADB shell input keyevent --longpress 66 >/dev/null 2>&1
     sleep 1.5
