@@ -1213,24 +1213,19 @@ void chrlvInitActAttack(ChrRecord *self, struct anim_group_info **arg1, s32 arg2
 
     next_anim = (u32)randomGetNext() % (u32)arg1[anim_index]->len;
 
-    // I can't get a `li t0,72` without explicit multiply, but
-    // it seems array dereference would be more correct here?
-    // Something like:
-    //     &arg1[anim_index]->table[next_anim]
-    //     arg1[anim_index]->table + next_anim
-    panim_float = (struct weapon_firing_animation_table *)(
-            (s32)arg1[anim_index]->table + (s32)((s32)next_anim * (s32)sizeof(struct weapon_firing_animation_table))
-        );
+    /* The N64 built this address by hand - `(s32)table + n * 72` - and the
+     * `li t0,72` in the original only matches with the multiply spelled
+     * out. That cast truncates the address of a STATIC table, which is
+     * fine when the image is loaded low (-no-pie puts it at 0x400000) and
+     * fatal when it is not: Android's libmain.so lands around 0x71'3087'0000,
+     * so panim_float came out of nowhere and its ->anim.anim read as NULL,
+     * killing the first guard that tried to attack. Index the array. */
+    panim_float = &(*arg1[anim_index]->table)[next_anim];
 
     if ((self->chrflags & CHRSTART_FORCENOBLOOD)
         && ((s32)panim_float->anim.anim == (s32)&ptr_animation_table->data[(s32)&ANIM_DATA_fire_hip]))
     {
-        // should be:
-        //     panim_float = &arg1[anim_index]->table[(next_anim + 1) % len]
-        // where `len = arg1[anim_index]->len`
-        panim_float = (struct weapon_firing_animation_table *)(
-            (s32)arg1[anim_index]->table + (s32)(((next_anim + 1) % arg1[anim_index]->len) * (s32)sizeof(struct weapon_firing_animation_table))
-        );
+        panim_float = &(*arg1[anim_index]->table)[(next_anim + 1) % arg1[anim_index]->len];
     }
 
     for (i=0; i<2; i++)

@@ -22,9 +22,10 @@ at runtime; it is verified by SHA-1 before loading.
 The game is playable end to end: full intro, menus, missions with AI, audio,
 saves, mouse/keyboard and gamepad input. It builds and runs on Linux
 (i686, x86-64, aarch64 — the latter qemu-verified bit-identical), Windows
-(Wine-verified), and Android (GLES3, verified in the emulator through the
-title sequence); macOS (Apple Silicon) builds in CI but has not yet been run
-on real hardware. Every push builds all six targets and uploads the
+(Wine-verified), and Android (GLES3, played on an Anbernic RG Slide:
+frontend, stage load, combat and the mission debrief, driven over adb by
+`port/tests/run_android.sh play`); macOS (Apple Silicon) builds in CI but
+has not yet been run on real hardware. Every push builds all six targets and uploads the
 binaries as artifacts — grab them from any green run on the
 [Actions](../../actions) page.
 
@@ -43,8 +44,8 @@ The two cosmetic items once tracked here are closed: fast3d now models
 `ALPHA_CVG_SEL`, so the RSP fog shade-alpha overwrite is accurate and on
 by default, and the aim sight measures pixel-exact at every window scale
 (the "oversized rings" note predated the texture fixes).
-² machine-side complete; the PortMaster zip and APK await validation on
-real handheld/phone hardware, and the macOS binary on a real Mac.
+² machine-side complete; the APK is validated on real hardware (RG Slide),
+the PortMaster zip still awaits a handheld, and the macOS binary a Mac.
 
 ## N64 support
 

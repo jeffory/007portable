@@ -4,9 +4,16 @@
 #
 #   port/tests/run_android.sh              install the debug APK and drive
 #   port/tests/run_android.sh drive        drive whatever is installed
+#   port/tests/run_android.sh play [n]     drive, then PLAY: walk, turn and
+#                                          shoot for n inputs (default 60)
 #
 # Env: SERIAL (adb device, default: the only one attached), APK, PRESSES,
 #      ROM (default data/ge007.u.z64).
+#
+# `play` is the one that reaches the AI: firing brings guards, and a guard
+# deciding to attack is a different code path from anything the frontend
+# or a stage load touches (it killed the port on arm64 for a while - see
+# chrlvInitActAttack). It reports the input that killed the app.
 #
 # THE THING TO KNOW ABOUT INPUT: `adb shell input keyevent <code>` sends the
 # down and the up in the same instant. The port samples SDL_GetKeyboardState
@@ -29,6 +36,7 @@ APK=${APK:-android/app/build/outputs/apk/debug/app-debug.apk}
 ROM=${ROM:-data/ge007.u.z64}
 PRESSES=${PRESSES:-7}
 MODE=${1:-install}
+PLAYFOR=${2:-60}
 
 if [ -n "${SERIAL:-}" ]; then
     ADB="adb -s $SERIAL"
@@ -78,4 +86,27 @@ fi
 
 echo "== still running (pid $PID)"
 $ADB shell "tail -3 $FILES/stderr.log" 2>/dev/null | sed 's/^/   /'
+
+if [ "$MODE" = play ]; then
+    echo "== playing ($PLAYFOR inputs: W walks, SPACE fires, LEFT turns)"
+    $ADB logcat -c
+    i=0
+    while [ "$i" -lt "$PLAYFOR" ]; do
+        i=$((i + 1))
+        case $((i % 5)) in
+            0) K=21 ;;   # DPAD_LEFT -> stick left
+            2|4) K=62 ;; # SPACE     -> Z, fire
+            *) K=51 ;;   # W         -> move
+        esac
+        $ADB shell input keyevent --longpress $K >/dev/null 2>&1
+        if [ "$($ADB shell "pidof $PKG || echo GONE" | tr -d '\r')" = GONE ]; then
+            echo "!! the game died after $i inputs (last keycode $K)"
+            $ADB logcat -d -b crash -v brief | grep -E "signal|fault addr|#0[0-9] pc" | tail -12
+            echo "   symbolise with: llvm-addr2line -f -C -e android/app/build/intermediates/cxx/Debug/*/obj/arm64-v8a/libmain.so <offset>"
+            exit 1
+        fi
+    done
+    echo "   survived $PLAYFOR inputs"
+fi
+
 echo "ANDROID: PASS"
