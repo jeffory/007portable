@@ -48,11 +48,47 @@ static void parseTicks(void)
     sExitAfter = getenv("PORT_STATE_HASH_EXIT") != NULL;
 }
 
+/* PORT_POS_TRACE=<n>: every n retrace ticks, print the control style, the
+ * vertical look angle, Bond's position, the ground height under him and
+ * his vertical velocity. It separates the two things that both look like
+ * "the game threw me in the air": walking that moves `verta` instead of
+ * `pos` is the control style (the stick is on the LOOK axis), while a
+ * `stanH` that jumps and decays is really the floor. */
+static void portPosTrace(u32 tick)
+{
+    static s32 every = -1;
+
+    if (every < 0) {
+        const char *e = getenv("PORT_POS_TRACE");
+        every = e != NULL ? atoi(e) : 0;
+        if (every < 1) {
+            every = e != NULL ? 1 : 0;
+        }
+    }
+    if (every == 0 || (tick % (u32)every) != 0 || g_CurrentPlayer == NULL) {
+        return;
+    }
+    fprintf(stderr, "POS t=%u style=%d verta=%.1f pos=(%.2f,%.2f,%.2f) y=%.2f stanH=%.2f vy=%.3f tile=%p\n",
+            tick,
+            (s32)g_CurrentPlayer->cur_player_control_type_0,
+            g_CurrentPlayer->vv_verta,
+            g_CurrentPlayer->prop != NULL ? g_CurrentPlayer->prop->pos.x : 0.0f,
+            g_CurrentPlayer->prop != NULL ? g_CurrentPlayer->prop->pos.y : 0.0f,
+            g_CurrentPlayer->prop != NULL ? g_CurrentPlayer->prop->pos.z : 0.0f,
+            g_CurrentPlayer->field_70,
+            g_CurrentPlayer->stanHeight,
+            g_CurrentPlayer->field_7C,
+            (void *)g_CurrentPlayer->field_488.current_tile_ptr);
+    fflush(stderr);
+}
+
 void portStateHashTick(u32 tick)
 {
     u32 crc;
     s32 i;
     s32 wanted = 0;
+
+    portPosTrace(tick);
 
     if (sNumTicks < 0) {
         parseTicks();

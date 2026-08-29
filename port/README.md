@@ -41,6 +41,16 @@ nothing. With mouselook off the game runs its stock
 1.1 control style and WASD drives the analog stick (tank-style, like the
 N64). Gamepads work via SDL_GameController with hotplug.
 
+**The control style follows whichever device you last used.** Mouselook
+needs style 1.2 Solitaire — the stick is the mouse's look axis, so the C
+buttons have to move — and the port forces 1.2 while the mouse is the
+active device. The moment you touch a gamepad it hands the style back to
+the game's own setting (1.1 Honey unless you changed it in the options),
+where the left stick moves and turns like the N64 and the right stick
+(the C buttons) looks and sidesteps; moving the mouse takes it back.
+Without that handover a pad player's forward push landed on the *look*
+axis and walking pitched the view at the sky.
+
 All key/mouse bindings are configurable: a commented
 `~/.config/ge007/input.ini` is written on first run (respects
 `XDG_CONFIG_HOME`; `PORT_INPUT_CONFIG=<path>` overrides). Keys are SDL
@@ -157,12 +167,29 @@ music PCM byte-for-byte, and gameplay state hashes
 position/view and every chr's action+position; `PORT_STATE_HASH_EXIT=1`
 exits after the last one).
 
+`PORT_POS_TRACE=<n>` prints Bond's state every n ticks — control style,
+vertical look angle, position, feet height, the ground height under him
+and his vertical velocity. It is the quickest way to tell a movement bug
+apart from a *look* bug: a walk that pitches `verta` instead of changing
+`pos` is a control-style problem, a `stanH` that jumps and decays is the
+floor.
+
 Input sessions can be recorded and replayed at the pad level:
 `PORT_INPUT_RECORD=<file>` captures the final pad values of every poll
 (all sources merged — keyboard, `PORT_AUTOSTART`, gamepad),
 `PORT_INPUT_REPLAY=<file>` feeds them back in place of all input. Under
 the deterministic clock a replayed session reproduces the exact same
-state hashes.
+state hashes. The stream is 4 controllers x `{u16be button; s8 x; s8 y}`
+per poll, so a session can also be synthesized outright — which is how
+gameplay bugs get a deterministic repro without a human at the keyboard.
+`PORT_INPUT_TRACE=1` logs the replayed pads too, so a replay the game
+ignores is distinguishable from one that never loaded.
+
+`PORT_TEST_VPAD=1` attaches an SDL *virtual* gamepad a couple of seconds
+in, drives a canned script through it (START into the stage, turn, fire,
+walk on the right stick, then walk on the left stick) and unplugs it
+again — the hotplug paths and the pad control style get exercised
+without any hardware.
 
 Re-pin with `run_goldens.sh capture` — only after intentionally changing
 output. Frame goldens are tied to this machine's Mesa/llvmpipe

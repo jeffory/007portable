@@ -45,6 +45,13 @@ static SDL_GameController *sPad;
 
 static int sMouselook = -1;          /* -1 = env not read yet */
 static int sMouseGrabbed;
+/* Which device the player is actually using. It decides the control style:
+ * the mouse needs 1.2 Solitaire (stick = look, C buttons = move), a gamepad
+ * wants the game's own setting - 1.1 Honey by default, where the stick
+ * moves and turns like the N64. Forcing 1.2 for a pad player puts forward
+ * on the LOOK axis, so walking pitches the view at the sky. Starts on the
+ * mouse (unchanged desktop behaviour) and flips on the first pad input. */
+static int sPadIsActiveDevice;
 static int sMouseInvert;
 static float sMouseSens = 2.0f;
 
@@ -423,7 +430,7 @@ static void padScan(void)
 
 int portMouselookGrabbed(void)
 {
-    return sMouselook > 0 && sMouseGrabbed;
+    return sMouselook > 0 && sMouseGrabbed && !sPadIsActiveDevice;
 }
 
 static void mouselookSetGrab(int on)
@@ -537,6 +544,8 @@ void portInputRead(OSContPad *pads)
         }
         if (rp != NULL) {
             s32 i;
+            static u32 rpoll;
+
             for (i = 0; i < MAXCONTROLLERS; i++) {
                 u8 rec[4];
                 if (fread(rec, 1, 4, rp) == 4) {
@@ -544,6 +553,15 @@ void portInputRead(OSContPad *pads)
                     pads[i].stick_x = (s8)rec[2];
                     pads[i].stick_y = (s8)rec[3];
                 }
+            }
+            /* the replay returns before the PORT_INPUT_TRACE block below,
+             * so trace here too - otherwise a replay that the game ignores
+             * looks exactly like a replay that never loaded */
+            rpoll++;
+            if (getenv("PORT_INPUT_TRACE") != NULL &&
+                (pads[0].button != 0 || pads[0].stick_x != 0 || pads[0].stick_y != 0)) {
+                fprintf(stderr, "port/input: replay poll=%u buttons=%04x stick=%d,%d\n",
+                        rpoll, pads[0].button, pads[0].stick_x, pads[0].stick_y);
             }
             return;
         }
@@ -599,14 +617,24 @@ void portInputRead(OSContPad *pads)
 
                 if (vj != NULL) {
                     /* script (timed past stage load): turn right 30..35s,
-                     * fire (RT) 35..37s, C-forward via right stick 37..42s */
+                     * fire (RT) 35..37s, C-forward via right stick 37..42s,
+                     * then walk forward on the LEFT stick 42..47s - the pad
+                     * player's normal way to move, and the one the forced
+                     * 1.2 control style used to turn into "look up" */
                     Sint16 lx = (vpolls >= 1800 && vpolls < 2100) ? 32767 : 0;
                     Sint16 rt = (vpolls >= 2100 && vpolls < 2220) ? 32767 : 0;
                     Sint16 ry = (vpolls >= 2220 && vpolls < 2520) ? -32767 : 0;
+                    Sint16 ly = (vpolls >= 2520 && vpolls < 2820) ? -32767 : 0;
+                    /* START at 10s drives --stage dam past the cinema, so
+                     * the script needs no PORT_AUTOSTART (whose later
+                     * presses would pause the game mid-test) */
+                    Uint8 st = (vpolls >= 600 && vpolls < 640) ? 1 : 0;
 
+                    SDL_JoystickSetVirtualButton(vj, SDL_CONTROLLER_BUTTON_START, st);
                     SDL_JoystickSetVirtualAxis(vj, SDL_CONTROLLER_AXIS_LEFTX, lx);
                     SDL_JoystickSetVirtualAxis(vj, SDL_CONTROLLER_AXIS_TRIGGERRIGHT, rt);
                     SDL_JoystickSetVirtualAxis(vj, SDL_CONTROLLER_AXIS_RIGHTY, ry);
+                    SDL_JoystickSetVirtualAxis(vj, SDL_CONTROLLER_AXIS_LEFTY, ly);
                 }
             }
         }
@@ -632,6 +660,9 @@ void portInputRead(OSContPad *pads)
     if (sPad != NULL) {
         Sint16 rx = SDL_GameControllerGetAxis(sPad, SDL_CONTROLLER_AXIS_RIGHTX);
         Sint16 ry = SDL_GameControllerGetAxis(sPad, SDL_CONTROLLER_AXIS_RIGHTY);
+        u16 padBefore = buttons;
+        s32 padXBefore = x;
+        s32 padYBefore = y;
 
         x += axisToStick(SDL_GameControllerGetAxis(sPad, SDL_CONTROLLER_AXIS_LEFTX));
         y -= axisToStick(SDL_GameControllerGetAxis(sPad, SDL_CONTROLLER_AXIS_LEFTY)); /* SDL +Y is down */
@@ -656,6 +687,17 @@ void portInputRead(OSContPad *pads)
         if (SDL_GameControllerGetButton(sPad, SDL_CONTROLLER_BUTTON_DPAD_DOWN))  buttons |= D_JPAD;
         if (SDL_GameControllerGetButton(sPad, SDL_CONTROLLER_BUTTON_DPAD_LEFT))  buttons |= L_JPAD;
         if (SDL_GameControllerGetButton(sPad, SDL_CONTROLLER_BUTTON_DPAD_RIGHT)) buttons |= R_JPAD;
+
+        /* any real pad input hands the control style back to the game's own
+         * setting (see sPadIsActiveDevice) and drops the mouse grab, which
+         * on a handheld was never a grab of anything */
+        if ((buttons != padBefore || x != padXBefore || y != padYBefore) && !sPadIsActiveDevice) {
+            sPadIsActiveDevice = 1;
+            fprintf(stderr, "port/input: gamepad in use — control style is the game's own setting\n");
+            if (sMouseGrabbed) {
+                mouselookSetGrab(0);
+            }
+        }
     }
 
     /* ---- keyboard + mouse buttons (configurable bindings) ------------- */
@@ -666,6 +708,14 @@ void portInputRead(OSContPad *pads)
         if (sMouselook > 0) {
             mb = SDL_GetRelativeMouseState(&dx, &dy);
 
+            /* moving the mouse takes it back from the pad (threshold so a
+             * stray count or a warp does not flip the style mid-walk) */
+            if (sPadIsActiveDevice && (mb != 0 || abs(dx) + abs(dy) > 4)) {
+                sPadIsActiveDevice = 0;
+                fprintf(stderr, "port/input: mouse in use — forcing control style 1.2\n");
+                mouselookSetGrab(1);
+            }
+
             /* grab toggle (edge-triggered) */
             {
                 static int prevToggle;
@@ -673,6 +723,11 @@ void portInputRead(OSContPad *pads)
 
                 if (t && !prevToggle) {
                     mouselookSetGrab(!sMouseGrabbed);
+                    /* an explicit grab is the player asking for the mouse,
+                     * so it also takes the style back from the pad */
+                    if (sMouseGrabbed) {
+                        sPadIsActiveDevice = 0;
+                    }
                 }
                 prevToggle = t;
             }
