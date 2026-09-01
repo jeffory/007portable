@@ -2,6 +2,7 @@
 #include <memp.h>
 #include <stdio.h>  /* PORT: PORT_CAMERAPOS_TRACE */
 #include <stdlib.h>
+#include "port.h"
 
 /* PORT_TEST_POSEND: first cutscene camera of the loaded setup (bondview2.c) */
 struct CutsceneRecord *g_PortFirstCutscene;

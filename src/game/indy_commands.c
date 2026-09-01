@@ -997,7 +997,7 @@ s32 indycmdAckHostCheckFileExists(u8 *response1,u8 *response2)
 }
 
 
-s32 indycmdReceiveFile(u8 *response1,u8 *response2,u32 childsize,u8 *child)
+s32 indycmdReceiveFile(u8 *response1,u8 *response2,u32 *childsize,u8 *child)
 {
     indyrescmdResponseSize(0,0x20);
     indyrescmdResponseRecieveFile(0x14,0x14,response1,response2,childsize,child);

@@ -206,6 +206,9 @@ bool bgTestBulletHitBackground(coord3d *from, coord3d *to, s32 roomnum, struct H
 void delete_room_data(s32 roomID);
 void load_bg_file(LEVEL_INDEX stagenum);
 
+/* returns a function-local static buffer, loaded high under PIE; without
+ * this prototype gnu89 callers truncated the pointer through implicit int */
+char *bgDebPrintROOMID(s32 roomId);
 s32 bgDebugRemoved7F0B9DE4(s32 arg0, s32 arg1, s32 arg2);
 void bgRemoved7F0B9DF4(s32 arg0);
 void               bgSwapConnectedRooms(s32 index);

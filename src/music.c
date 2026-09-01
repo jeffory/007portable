@@ -1,5 +1,6 @@
 #include <ultra64.h>
 #include <PR/libaudio.h>
+#include "port.h"
 #include "inflate/inflate.h"
 #include "audi.h"
 #include <bondconstants.h>

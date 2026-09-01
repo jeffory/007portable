@@ -40,7 +40,7 @@ void viInit(void)
 #else
     debTryAdd(&viDebugNoticeList, "vi_c_debug");
 #endif
-    osCreateMesgQueue(&vi_c_debug_MQ, &vi_c_debug_MSG, 8);
+    osCreateMesgQueue(&vi_c_debug_MQ, vi_c_debug_MSG, 8);
 }
 
 

@@ -8709,7 +8709,10 @@ void mp_respawn_handler(void)
 {
     coord3d start_pos = ZeroCoordSpawnPos;
     f32 start_look_angle;
-    s32 start_stan;
+    /* holds g_Startpad[i]->stan and is handed to bondviewYPositionRelated /
+     * change_player_pos_to_target, which take StandTile*; bondview_r.c's
+     * copy of this code already declares it honestly */
+    StandTile *start_stan;
     s32 pad;
     f32 stan_height;
     s32 var_v0;
@@ -10100,7 +10103,7 @@ Gfx *sub_GAME_7F08AAE8(Gfx *gdl)
     f32 theta_x;
     s32 debug_boxbottom;
     s32 pad;
-    s32 *roomid;
+    char *roomid;
     s32 debug_angle;
     DirectionLabels directions;
 
