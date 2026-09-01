@@ -2244,16 +2244,6 @@ typedef struct Weapon1PTransformKeyframe {
     f32 duration;
 } Weapon1PTransformKeyframe;
 
-// placeholder while matching
-struct move_bond_temp_struct {
-    s32 unk00;
-    s32 unk04;
-    /* passed to stanTileDistanceRelated, whose record (and callbacks) span
-     * 16 bytes; the N64 build let it spill into IDO frame slack */
-    s32 port_pad08;
-    s32 port_pad0c;
-};
-
 //D:80036424
 extern s32 g_bondviewForceDisarm;
 //D:80036428

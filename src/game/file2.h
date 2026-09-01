@@ -27,6 +27,9 @@ extern ChrRecord *g_CurModelChr;
 u8 fileGetBondForFolder(u32 folder);
 void fileValidateSaves(void);
 bool fileGetIsCheatUnlocked(save_data *save, s32 cheat);
+/* returns &saves[i] - a static, loaded high under PIE; without this
+ * prototype gnu89 callers truncated the pointer through implicit int */
+save_data *fileGetSaveForFoldernum(u32 folder);
 STAGESTATUS fileIsStageUnlockedAtDifficulty(s32 foldernum, LEVEL_SOLO_SEQUENCE levelid, DIFFICULTY difficulty);
 void fileUnlockStageInFolderAtDifficulty(s32 foldernum, LEVEL_SOLO_SEQUENCE levelid, DIFFICULTY difficulty, s32 newtime);
 void fileSaveFolderUnlockCheat(s32 foldernum, s32 cheat);

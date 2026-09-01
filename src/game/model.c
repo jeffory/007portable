@@ -1191,7 +1191,10 @@ void process_01_group_heading(ModelRenderData* renderdata, Model* model, ModelNo
 /**
  * Address: 7F06D8B0
  */
-void modelBuildGroupMatrices(Mtxf **parentMtx, Model *model, ModelGroupMtxBuildArg *mgm, coord3d *rot)
+/* First param was typed Mtxf** but the only caller passes the
+ * ModelRenderData; the [0] read below was really ->basemtx (offset 0 either
+ * way). See sub_GAME_7F06DB5C, which reads the same field honestly. */
+void modelBuildGroupMatrices(ModelRenderData *parentMtx, Model *model, ModelGroupMtxBuildArg *mgm, coord3d *rot)
 {
     u32 flags;
     ModelRoData_GroupRecord *group;
@@ -1209,8 +1212,8 @@ void modelBuildGroupMatrices(Mtxf **parentMtx, Model *model, ModelGroupMtxBuildA
     quatf q2;
     Mtxf *dst;
     f32 angle;
-    Mtxf **parentMtxPtr;
-    
+    ModelRenderData *parentMtxPtr;
+
     flags = mgm->flags;
     group = mgm->group;
     matrix0 = group->MatrixID0;
@@ -1227,7 +1230,7 @@ void modelBuildGroupMatrices(Mtxf **parentMtx, Model *model, ModelGroupMtxBuildA
     }
     else
     {
-        parent = parentMtxPtr[0];
+        parent = parentMtxPtr->basemtx;
     }
     
     has_matrix2 = flags & MODELGROUP_MTX_HAS_MATRIX2;
@@ -1326,13 +1329,16 @@ void sub_GAME_7F06DB5C(ModelRenderData *arg0, Model *arg1, ModelNode *arg2, quat
     s32 sp4C;
     RenderPosView *sp48;
     s32 sp44;
-    s32 *new_var;
+    uintptr_t *new_var;
     s32 sp40;
     quatf sp2C;
     Mtxf *sp28;
     f32 sp24;
     s32 _gap20;
-    s32 sp1C;
+    /* sp1C carries pointers (arg2->Parent, &sp48[sp54]); as an s32 it
+     * truncated them, which under PIE turned the static gait-model node
+     * tree into garbage addresses. Heap pointers survived by design. */
+    uintptr_t sp1C;
 
     spA4 = arg2->Opcode;
     spA0 = (ModelRoData_GroupRecord *)arg2->Data;
@@ -1341,7 +1347,7 @@ void sub_GAME_7F06DB5C(ModelRenderData *arg0, Model *arg1, ModelNode *arg2, quat
     sp4C = spA0->MatrixID2;
     new_var = &sp1C;
     sp48 = arg1->render_pos;
-    sp1C = (s32)arg2->Parent;
+    sp1C = (uintptr_t)arg2->Parent;
 
     if (*new_var != 0) {
         sp9C = arg0->basemtx;
@@ -1352,7 +1358,7 @@ void sub_GAME_7F06DB5C(ModelRenderData *arg0, Model *arg1, ModelNode *arg2, quat
 
     if (sp9C != 0) {
         quaternion_to_transform_matrix(&spA0->Origin, arg3, &sp58);
-        sp1C = (s32)&sp48[sp54];
+        sp1C = (uintptr_t)&sp48[sp54];
         matrix_4x4_multiply_homogeneous(sp9C, &sp58, (Mtxf *)sp1C);
         if (g_ModelJointPositionedFunc != NULL) {
             ((void (*)(s32, s32, s32)) g_ModelJointPositionedFunc)(sp54, sp1C, sp1C);
@@ -1558,7 +1564,9 @@ void process_02_position(ModelRenderData *arg0, Model *model, ModelNode *node)
     }
     else
     {
-        modelBuildGroupMatrices(arg0, model, node, &rot1);
+        /* ModelGroupMtxBuildArg is a layout-compatible view of ModelNode
+         * (flags/Opcode, group/Data, parentnode/Parent line up on 32 and 64) */
+        modelBuildGroupMatrices(arg0, model, (ModelGroupMtxBuildArg *) node, &rot1);
     }
 }
 

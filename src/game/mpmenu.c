@@ -764,13 +764,15 @@ Gfx *display_text_for_playerdata_on_MP_menu(Gfx *gdl, s32 x, s32 y, s32 points, 
     s32 textwidth;
     s32 textheight;
     s32 unused;
-    u16 *text;
+    /* sprintf formatted into the pointer variable's own 4 bytes on the N64;
+     * give the digits a real buffer ("-2147483648" needs 12) */
+    char text[12];
     s16 viX;
     s32 viY;
 
-    sprintf(&text, "%d", points);
+    sprintf(text, "%d", points);
 
-    textMeasure(&textheight, &textwidth, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0);
+    textMeasure(&textheight, &textwidth, text, ptrFontBankGothicChars, ptrFontBankGothic, 0);
 
     textX = x - (textwidth >> 1);
     textY = y;
@@ -780,37 +782,37 @@ Gfx *display_text_for_playerdata_on_MP_menu(Gfx *gdl, s32 x, s32 y, s32 points, 
         case GREEN_NORMAL:
             viX = viGetX();
             viY = viGetY();
-            gdl = textRender(gdl, &textX, &textY, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0xFF00B0, viX, viY, 0, 0);
+            gdl = textRender(gdl, &textX, &textY, text, ptrFontBankGothicChars, ptrFontBankGothic, 0xFF00B0, viX, viY, 0, 0);
             break;
 
         case GREEN_HIGHLIGHT:
             viX = viGetX();
             viY = viGetY();
-            gdl = textRenderOutlined(gdl, &textX, &textY, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0xA0FFA0F0, 0x7000A0, viX, viY, 0, 0);
+            gdl = textRenderOutlined(gdl, &textX, &textY, text, ptrFontBankGothicChars, ptrFontBankGothic, 0xA0FFA0F0, 0x7000A0, viX, viY, 0, 0);
             break;
 
         case RED_NORMAL:
             viX = viGetX();
             viY = viGetY();
-            gdl = textRender(gdl, &textX, &textY, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0xFF4040B0, viX, viY, 0, 0);
+            gdl = textRender(gdl, &textX, &textY, text, ptrFontBankGothicChars, ptrFontBankGothic, 0xFF4040B0, viX, viY, 0, 0);
             break;
 
         case RED_HIGHLIGHT:
             viX = viGetX();
             viY = viGetY();
-            gdl = textRenderOutlined(gdl, &textX, &textY, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0xFFA0A0F0, 0x700000A0, viX, viY, 0, 0);
+            gdl = textRenderOutlined(gdl, &textX, &textY, text, ptrFontBankGothicChars, ptrFontBankGothic, 0xFFA0A0F0, 0x700000A0, viX, viY, 0, 0);
             break;
 
         case BLUE_NORMAL:
             viX = viGetX();
             viY = viGetY();
-            gdl = textRender(gdl, &textX, &textY, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0x4040FFB0, viX, viY, 0, 0);
+            gdl = textRender(gdl, &textX, &textY, text, ptrFontBankGothicChars, ptrFontBankGothic, 0x4040FFB0, viX, viY, 0, 0);
             break;
 
         case BLUE_HIGHLIGHT:
             viX = viGetX();
             viY = viGetY();
-            gdl = textRenderOutlined(gdl, &textX, &textY, &text, ptrFontBankGothicChars, ptrFontBankGothic, 0xA0A0FFF0, 0x70A0, viX, viY, 0, 0);
+            gdl = textRenderOutlined(gdl, &textX, &textY, text, ptrFontBankGothicChars, ptrFontBankGothic, 0xA0A0FFF0, 0x70A0, viX, viY, 0, 0);
             break;
     }
 

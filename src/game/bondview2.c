@@ -7194,7 +7194,10 @@ void MoveBond(s8 stick_x, s8 stick_y, u16 buttons, u16 oldbuttons)
         f32 nd; // canonical name
         f32 ftemp_7;
         f32 sp240;
-        struct move_bond_temp_struct curLocus;
+        /* was struct move_bond_temp_struct, a 16-byte matching placeholder;
+         * the 64-bit record is 24 bytes (->rooms is a pointer), so reserve
+         * the real thing like bondviewTryMoveToStan does */
+        struct StandTileLocusCallbackRecord curLocus;
         struct move_bond_collision bondCollision;
         f32 shorten; // canonical name
         f32 headpos_x;

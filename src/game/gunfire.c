@@ -6214,9 +6214,13 @@ void gunSetSightVisible(s32 reason, bool visible)
 }
 
 
-void gunDrawSight(s32 *gdl) {
+/* texSelect/display_image_at_position take Gfx** and move the display-list
+ * cursor 8 bytes at a time on a 64-bit host; the old s32 slot here only held
+ * 4, so their loads picked up stack garbage and texSetRenderMode wrote
+ * through it whenever the aim sight drew. */
+void gunDrawSight(Gfx **gdl) {
 
-    s32 sp54;
+    Gfx *sp54;
     f32 xypos[2];
     f32 halfedxy[2];
 
@@ -6235,7 +6239,7 @@ void gunDrawSight(s32 *gdl) {
 #ifdef VERSION_EU
         halfedxy[1] = halfedxy[1] * g_GunSightAspectRatio;
 #endif
-        display_image_at_position(&sp54, &xypos, &halfedxy, 0x20, 0x20, 0, 0, 1, 0xFF, 0xFF, 0xFF, 0x6E, (crosshairimage->level > 0), 0);
+        display_image_at_position(&sp54, xypos, halfedxy, 0x20, 0x20, 0, 0, 1, 0xFF, 0xFF, 0xFF, 0x6E, (crosshairimage->level > 0), 0);
         *gdl = sp54;
     }
 }
