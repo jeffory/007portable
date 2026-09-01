@@ -54,7 +54,10 @@ fi
 
 $ADB get-state >/dev/null 2>&1 || { echo "no device (adb get-state failed)"; exit 2; }
 
-if [ "$MODE" = install ]; then
+# every mode except `drive` reinstalls first: a rebuilt APK that never got
+# installed makes a play run test the WRONG binary, and the pass/fail lands
+# on whatever was still on the device
+if [ "$MODE" != drive ]; then
     [ -f "$APK" ] || { echo "no APK at $APK (build it: cd android && gradle assembleDebug)"; exit 2; }
     echo "== installing $APK"
     $ADB install -r "$APK" >/dev/null || {
@@ -71,6 +74,12 @@ if [ "$MODE" = install ]; then
 fi
 
 echo "== launching"
+# injected adb input does not count as user activity, so the screen times
+# out mid-run, the activity pauses, and Android ANR-kills the game - which
+# looks exactly like a crash. Keep the display on for the duration.
+$ADB shell svc power stayon true
+$ADB shell input keyevent 224 >/dev/null 2>&1  # WAKEUP
+trap '$ADB shell svc power stayon false' EXIT
 $ADB shell am force-stop $PKG
 $ADB logcat -c
 if [ -n "$ARGS" ]; then

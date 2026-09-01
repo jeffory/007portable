@@ -43,6 +43,11 @@ public class GEActivity extends SDLActivity {
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
             getWindow().setAttributes(lp);
         }
+        /* A game holds the screen: cutscenes and gamepad-only play generate
+         * no touch activity, so without this the display times out
+         * mid-mission, the activity pauses, and Android eventually ANR-kills
+         * the backgrounded game. */
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         super.onCreate(savedInstanceState);
     }
 
